@@ -12,6 +12,7 @@ import php.runtime.env.Environment;
 import php.runtime.memory.ArrayMemory;
 import php.runtime.memory.StringMemory;
 import php.runtime.reflection.ClassEntity;
+import php.runtime.memory.StringMemory;
 
 import java.util.Collection;
 
@@ -260,7 +261,8 @@ public class UXAbstractCodeArea<T extends AbstractCodeArea> extends UXRegion<Abs
             Paragraph<Collection<String>, String, Collection<String>> paragraph = getWrappedObject().getParagraph(line);
 
             ArrayMemory result = ArrayMemory.createHashed();
-            result.put("text", paragraph.getText());
+            //result.put("text", paragraph.getText()); // Была ошибка сборки Memory что-то там (Осталась одна несовместимость API — ArrayMemory.put()) исправить!
+            result.put("text", StringMemory.valueOf(paragraph.getText()));
             result.put("segments", ArrayMemory.ofStringCollection(paragraph.getSegments()));
             result.put("style", ArrayMemory.ofStringCollection(paragraph.getParagraphStyle()));
 

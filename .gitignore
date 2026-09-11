@@ -30,3 +30,37 @@ vendor/
 develnext/misc/library/bundles/*/*.jar
 
 out/
+
+# Local recovery / temporary dependencies
+.tmp-*/
+.tmp*/
+3rd-party/node-v6.11.3-win-x64/
+3rd-party/bellsoft-jdk8u504+1-windows-amd64-full.msi
+
+# Local build outputs / generated launchers
+develnext/build/
+develnext/misc/
+develnext/launcher/DevelNext.exe
+develnext/launcher/DevelNext-debug.exe
+
+# Temporary recovered jars / local artifacts
+jar/
+compilation/
+
+# IDE / OS junk
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+*.tmp
+*.bak
+
+Compilation
+jar
+platform_rework_plan_v0.1.docx
+develnext/launcher/DevelNext.exe
+develnext/launcher/DevelNext-debug.exe

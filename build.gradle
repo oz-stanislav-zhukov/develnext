@@ -11,14 +11,14 @@ buildscript {
     }
 }
 
-buildscript {
+/*buildscript {
     repositories {
         jcenter()
     }
     dependencies {
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.1'
     }
-}
+}*/
 
 task wrapper(type: Wrapper) {
     gradleVersion = 2.12;
