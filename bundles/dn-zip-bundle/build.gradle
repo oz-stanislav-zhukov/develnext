@@ -2,8 +2,6 @@
 project.version = ''
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -12,7 +10,7 @@ sourceSets {
 }
 
 dependencies {
-    compile "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
-    compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
+    implementation "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
+    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.36'
 }
 

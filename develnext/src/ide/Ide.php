@@ -255,7 +255,9 @@ class Ide extends Application
                     Logger::info("Protocol handler is shutdown ide ...");
 
                     Timer::after('7s', function () {
-                        $this->shutdown();
+                        uiLater(function () {
+                            $this->shutdown();
+                        });
                     });
                     return;
                 }
@@ -447,13 +449,15 @@ class Ide extends Application
 
     public function getLaunch4JPath()
     {
-        return fs::parent($this->getLaunch4JProgram());
+        $launch4jPath = new File($this->getToolPath(), $this->isWindows() ? '/Launch4j' : '/Launch4jLinux');
+
+        return $launch4jPath->isDirectory() ? $launch4jPath->getCanonicalFile() : null;
     }
 
     public function getLaunch4JProgram()
     {
         if (Ide::get()->isWindows()) {
-            $launch4jPath = new File($this->getToolPath(), '/Launch4j/launch4jc.exe');
+            $launch4jPath = new File($this->getJrePath(), '/bin/java.exe');
         } else {
             $launch4jPath = new File($this->getToolPath(), '/Launch4jLinux/launch4j');
         }
@@ -1556,11 +1560,16 @@ class Ide extends Application
         }));
 
         $shutdownTh->setName("DevelNext Shutdown");
+        $shutdownTh->setDaemon(true);
         $shutdownTh->start();
 
         Logger::info("Start IDE shutdown ...");
 
         $this->trigger(__FUNCTION__);
+
+        if ($this->serviceManager) {
+            $this->serviceManager->shutdown();
+        }
 
         (new Thread(function () {
             Logger::info("Shutdown asyncThreadPool");
@@ -1597,6 +1606,7 @@ class Ide extends Application
 
         try {
             Logger::shutdown();
+            ThreadPool::shutdownAll();
             parent::shutdown();
         } catch (\Exception $e) {
             //System::halt(0);

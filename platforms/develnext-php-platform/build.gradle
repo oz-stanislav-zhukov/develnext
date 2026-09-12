@@ -1,6 +1,4 @@
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -10,6 +8,6 @@ sourceSets {
 
 
 dependencies {
-    compile project(":stubs/dn-jphp-stub")
-    compile project(":stubs/dn-php-stub")
+    implementation project(":stubs:dn-jphp-stub")
+    implementation project(":stubs:dn-php-stub")
 }

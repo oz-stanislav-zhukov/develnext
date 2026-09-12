@@ -90,6 +90,7 @@ class AntOneJarBuildType extends AbstractBuildType
     public static function makeAntBuildFile(Project $project, array $config)
     {
         $project->copyModuleFiles($project->getRootDir() . "/build/dist/lib");
+        FileUtils::copyDirectory(Ide::getOwnFile('lib/javafx'), $project->getRootDir() . '/build/dist/lib/javafx');
 
         $content = FileUtils::get('res://ide/build/ant/buildDist.xml');
         $content = str::replace($content, '#NAME#', $project->getName());
@@ -163,7 +164,7 @@ class AntOneJarBuildType extends AbstractBuildType
         }
 
 
-        $extList = '';
+        $serviceFiles = [];
         $oneJarContent = [];
 
         $addedModuleNames = [];
@@ -186,19 +187,26 @@ class AntOneJarBuildType extends AbstractBuildType
                     $excl = '';
                 }
 
-                $oneJarContent[] = "<zipfileset src='\${dist}/lib/{$name}' excludes='JPHP-INF/sdk/** $excl' />";
+                $oneJarContent[] = "<zipfileset src='\${dist}/lib/{$name}' excludes='JPHP-INF/sdk/** META-INF/services/** module-info.class META-INF/versions/**/module-info.class $excl' />";
 
                 try {
                     $zipFile = new ZipFile($module->getId());
 
-                    if ($zipFile->has('META-INF/services/php.runtime.ext.support.Extension')) {
-                        $zipFile->read('META-INF/services/php.runtime.ext.support.Extension', function ($stat, Stream $stream) use (&$extList) {
-                            $extList .= "$stream" . "\n\n";
-                        });
-                    } else {
-                        Logger::info("Skip extensions list for module {$module->getId()}");
-                    }
+                    foreach ($zipFile->statAll() as $stat) {
+                        $serviceName = $stat['name'];
 
+                        if (str::startsWith($serviceName, 'META-INF/services/') && !str::endsWith($serviceName, '/')) {
+                            $zipFile->read($serviceName, function ($stat, Stream $stream) use (&$serviceFiles, $serviceName) {
+                                foreach (str::split("$stream", "\n") as $provider) {
+                                    $provider = str::trim($provider);
+
+                                    if ($provider && !str::startsWith($provider, '#')) {
+                                        $serviceFiles[$serviceName][$provider] = $provider;
+                                    }
+                                }
+                            });
+                        }
+                    }
                 } catch (IOException $e) {
                     Logger::warn("Unable to read zip data from {$module->getId()}, {$e->getMessage()}");
                 }
@@ -208,7 +216,10 @@ class AntOneJarBuildType extends AbstractBuildType
         $content = str::replace($content, '#ONE_JAR_CONTENT#', str::join($oneJarContent, " "));
 
         FileUtils::put($project->getRootDir() . "/build.xml", $content);
-        FileUtils::put($project->getRootDir() . '/build/dist/gen/META-INF/services/php.runtime.ext.support.Extension', $extList);
+
+        foreach ($serviceFiles as $serviceName => $providers) {
+            FileUtils::put($project->getRootDir() . "/build/dist/gen/$serviceName", str::join($providers, "\n") . "\n");
+        }
     }
 
     /**
@@ -239,7 +250,13 @@ class AntOneJarBuildType extends AbstractBuildType
                     $dialog->setBuildPath($this->getBuildPath($project));
                     $dialog->setOpenDirectory($this->getBuildPath($project));
 
-                    $pathToProgram = [Ide::get()->getJrePath() . "/bin/java",  "-jar", "{$this->getBuildPath($project)}/{$project->getName()}.jar"];
+                    $pathToProgram = [
+                        Ide::get()->getJrePath() . "/bin/java",
+                        '--module-path', "{$this->getBuildPath($project)}/lib/javafx",
+                        '--add-modules', 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing',
+                        '--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web',
+                        '-jar', "{$this->getBuildPath($project)}/{$project->getName()}.jar"
+                    ];
 
                     $dialog->setRunProgram($pathToProgram);
 

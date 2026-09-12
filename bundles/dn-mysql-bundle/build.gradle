@@ -2,8 +2,6 @@
 project.version = ''
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -12,5 +10,5 @@ sourceSets {
 }
 
 dependencies {
-    compile 'mysql:mysql-connector-java:5.1.41'
+    implementation 'mysql:mysql-connector-java:5.1.41'
 }

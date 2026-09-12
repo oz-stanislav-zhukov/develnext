@@ -7,9 +7,7 @@ def name = 'dn-my-bundle'
 
 repositories {
     mavenCentral()
-    mavenLocal()
     maven { url "https://jitpack.io" }
-    maven { url 'http://maven.develnext.org' }
 }
 
 dependencies {
@@ -26,16 +24,16 @@ jar {
     exclude '.resource'
 }
 
-jar.baseName = name + '.dn'
+jar.archiveBaseName.set(name + '.dn')
 
 task bundle(type: Zip, dependsOn: ['clean', 'jar']) {
     println project.buildDir
 
-    from (configurations.runtime.allArtifacts.files) {
+    from (configurations.runtimeClasspath.allArtifacts.files) {
         into ("bundle/")
     }
 
-    from (configurations.runtime) {
+    from (configurations.runtimeClasspath) {
         into ("bundle/")
     }
 
@@ -43,10 +41,10 @@ task bundle(type: Zip, dependsOn: ['clean', 'jar']) {
         into ("")
     }
 
-    archiveName = "${name}.dnbundle"
-    destinationDir project.buildDir
+    archiveFileName.set("${name}.dnbundle")
+    destinationDirectory.set(project.buildDir)
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = 2.12;
+wrapper {
+    gradleVersion = '9.7.1'
 }

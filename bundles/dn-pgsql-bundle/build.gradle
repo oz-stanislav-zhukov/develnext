@@ -2,8 +2,6 @@
 project.version = ''
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -12,5 +10,5 @@ sourceSets {
 }
 
 dependencies {
-    compile group: 'org.postgresql', name: 'postgresql', version: '9.4.1212.jre7'
+    implementation group: 'org.postgresql', name: 'postgresql', version: '9.4.1212.jre7'
 }

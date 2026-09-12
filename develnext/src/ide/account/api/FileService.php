@@ -146,6 +146,16 @@ class FileService extends AbstractService
 
     public function __destruct()
     {
-        $this->loadThPool->shutdown();
+        $this->shutdown();
+    }
+
+    public function shutdown()
+    {
+        if (!$this->loadThPool->isShutdown()) {
+            Logger::debug("Shutdown file loading pool");
+            $this->loadThPool->shutdownNow();
+        }
+
+        parent::shutdown();
     }
 }

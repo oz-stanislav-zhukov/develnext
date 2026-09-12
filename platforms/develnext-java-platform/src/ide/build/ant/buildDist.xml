@@ -6,10 +6,12 @@
     <property name="launch4j.dir" location="#LAUNCH4J_DIR#" />
     <property name="jre.dir" location="#JRE_DIR#" />
 
-    <taskdef name="launch4j"
-             classname="net.sf.launch4j.ant.Launch4jTask"
-             classpath="${launch4j.dir}/launch4j.jar
-        :${launch4j.dir}/lib/xstream.jar" />
+    <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask">
+        <classpath>
+            <pathelement location="${launch4j.dir}/launch4j.jar" />
+            <fileset dir="${launch4j.dir}/lib" includes="*.jar" />
+        </classpath>
+    </taskdef>
 
     <target name="init">
         <mkdir dir="${build}"/>
@@ -39,7 +41,9 @@
         </jar>
 
         <delete dir="${dist}/gen" failonerror="false" />
-        <delete dir="${dist}/lib" failonerror="false" />
+        <delete failonerror="false">
+            <fileset dir="${dist}/lib" includes="*.jar" />
+        </delete>
     </target>
 
     <target name="clean" description="clean up">
@@ -61,7 +65,10 @@
                 <classPath mainClass="org.develnext.jphp.ext.javafx.FXLauncher">
                     <cp>lib/*</cp>
                 </classPath>
-                <jre minVersion="1.8.0" path="#L4J_JRE_PATH#" runtimeBits="64/32">
+                <jre minVersion="25" path="#L4J_JRE_PATH#" requiresJdk="false" requires64Bit="true">
+                    <opt>--module-path="%EXEDIR%\lib\javafx"</opt>
+                    <opt>--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing</opt>
+                    <opt>--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web</opt>
                     <opt>-Dfile.encoding=UTF-8</opt>
                 </jre>
             </config>

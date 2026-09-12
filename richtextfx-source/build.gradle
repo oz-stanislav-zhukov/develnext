@@ -1,0 +1,17 @@
+apply plugin: 'java-library'
+
+description = 'Source-built RichTextFX 0.11.7 compatibility fork'
+
+sourceSets {
+    main {
+        java.srcDir "$rootDir/3rd-party/RichTextFX/richtextfx/src/main/java"
+        resources.srcDir "$rootDir/3rd-party/RichTextFX/richtextfx/src/main/resources"
+    }
+}
+
+dependencies {
+    api 'org.reactfx:reactfx:2.0-M5'
+    api 'org.fxmisc.undo:undofx:2.1.1'
+    api 'org.fxmisc.flowless:flowless:0.7.4'
+    api 'org.fxmisc.wellbehaved:wellbehavedfx:0.3.3'
+}

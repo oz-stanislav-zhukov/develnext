@@ -10,31 +10,38 @@ include 'develnext-lexer';
 include 'develnext-launcher';
 
 include 'jphp-gui-richtext-ext';
+include 'richtextfx-source';
 include 'jphp-gui-tabs-ext';
 
 // platforms
 file("$rootDir.path/platforms").listFiles().each { file ->
     if (file.directory && file.name.startsWith("develnext-") && file.name.endsWith("-platform")) {
-        println "include 'platforms/$file.name'"
+        def projectPath = ":platforms:${file.name}"
+        println "include '$projectPath'"
 
-        include "platforms/$file.name"
+        include projectPath
+        project(projectPath).projectDir = file
     }
 }
 
 // bundles
 file("$rootDir.path/bundles").listFiles().each { file ->
     if (file.directory && file.name.endsWith("-bundle")) {
-        println "include 'bundles/$file.name'"
+        def projectPath = ":bundles:${file.name}"
+        println "include '$projectPath'"
 
-        include "bundles/$file.name"
+        include projectPath
+        project(projectPath).projectDir = file
     }
 }
 
 // stubs
 file("$rootDir.path/stubs").listFiles().each { file ->
     if (file.directory && file.name.endsWith("-stub")) {
-        println "include 'stubs/$file.name'"
+        def projectPath = ":stubs:${file.name}"
+        println "include '$projectPath'"
 
-        include "stubs/$file.name"
+        include projectPath
+        project(projectPath).projectDir = file
     }
 }

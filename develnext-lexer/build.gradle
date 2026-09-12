@@ -4,9 +4,9 @@ project.version = '1.0'
 
 dependencies {
     //antlr 'org.antlr:antlr4:4.5.3'
-    compile 'org.antlr:antlr4-runtime:4.5.3'
-    compile "org.develnext.jphp:jphp-core:$jphpVersion"
-    compile "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
+    api 'org.antlr:antlr4-runtime:4.13.2'
+    api "org.develnext.jphp:jphp-core:$jphpVersion"
+    api "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
 }
 
 /*generateGrammarSource {

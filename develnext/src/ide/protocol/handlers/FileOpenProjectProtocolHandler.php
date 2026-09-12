@@ -10,8 +10,10 @@ use ide\Logger;
 use ide\protocol\AbstractProtocolHandler;
 use ide\systems\ProjectSystem;
 use ide\ui\Notifications;
+use php\lang\System;
 use php\lib\fs;
 use php\lib\str;
+use php\time\Timer;
 
 class FileOpenProjectProtocolHandler extends AbstractProtocolHandler
 {
@@ -36,7 +38,16 @@ class FileOpenProjectProtocolHandler extends AbstractProtocolHandler
             Ide::get()->disableOpenLastProject();
 
             Ide::get()->bind('start', function () use ($query) {
-                ProjectSystem::open($query);
+                $smokeMode = System::getProperty('develnext.smokeMode') === 'true';
+                ProjectSystem::open($query, !$smokeMode, !$smokeMode);
+
+                if ($smokeMode) {
+                    Timer::after('5s', function () {
+                        uiLater(function () {
+                            Ide::get()->shutdown();
+                        });
+                    });
+                }
             });
         } elseif (fs::hasExt($query, 'zip')) {
             Ide::get()->disableOpenLastProject();

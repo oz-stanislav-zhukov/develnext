@@ -34,6 +34,16 @@ use php\time\Time;
  */
 class SplashForm extends AbstractIdeForm
 {
+    protected $minimumDisplayElapsed = false;
+    protected $mainReady = false;
+
+    protected function tryHideWhenReady()
+    {
+        if ($this->minimumDisplayElapsed && $this->mainReady) {
+            $this->hide();
+        }
+    }
+
     protected function init()
     {
         Logger::debug("Init form ...");
@@ -98,13 +108,15 @@ class SplashForm extends AbstractIdeForm
             }
         }
 
-        waitAsync(7000, function() {
-            if ($this->_app->getMainForm()->visible) {
-                $this->hide();
-            }
+        waitAsync(2000, function() {
+            $this->minimumDisplayElapsed = true;
+            $this->tryHideWhenReady();
         });
 
         Ide::get()->on('start', function () {
+            $this->mainReady = true;
+            $this->tryHideWhenReady();
+
             Ide::accountManager()->on('update', function ($data) {
                 Ide::service()->file()->getImageAsync($data['avatar'], function ($file) {
                     Ide::get()->setUserConfigValue('splash.avatar', $file);
@@ -132,14 +144,7 @@ class SplashForm extends AbstractIdeForm
     public function doShow()
     {
         $this->tip->text = SplashTipSystem::get(Ide::get()->getLanguage()->getCode());
-
-        if (Ide::get()->isDevelopment() && Ide::get()->isWindows()) {
-            if ($this->opacity > 0.9) {
-                $this->opacity = 0.05;
-            } else {
-                $this->opacity = 1;
-            }
-        }
+        $this->opacity = 1;
 
         uiLater(function () {
             $this->toFront();

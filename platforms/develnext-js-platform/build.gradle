@@ -2,8 +2,6 @@
 project.version = '1.0'
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -13,5 +11,5 @@ sourceSets {
 
 
 dependencies {
-    compile project(':bundles/dn-httpclient-bundle')
+    implementation project(':bundles:dn-httpclient-bundle')
 }

@@ -10,19 +10,17 @@
  *******************************************************************************/
 package org.develnext.jphp.ext.javafx.tabs.support.skin;
 
-import com.sun.javafx.scene.control.skin.TabPaneSkin;
-import java.lang.reflect.Field;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
-import javafx.css.StyleOrigin;
-import javafx.css.StyleableProperty;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.skin.TabPaneSkin;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
@@ -33,7 +31,6 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import org.develnext.jphp.ext.javafx.tabs.support.DndTabPaneFactory;
 import org.develnext.jphp.ext.javafx.tabs.support.DndTabPaneFactory.DropType;
@@ -50,9 +47,7 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 	 */
 	public static final DataFormat TAB_MOVE = new DataFormat("DnDTabPane:tabMove"); //$NON-NLS-1$
 
-	private Object noneEnum;
-	private StyleableProperty<Object> openAnimation;
-	private StyleableProperty<Object> closeAnimation;
+	private Pane headersRegion;
 
 	/**
 	 * Create a new skin
@@ -62,16 +57,19 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 	 */
 	public DnDTabPaneSkin(TabPane tabPane) {
 		super(tabPane);
-		hookTabFolderSkin();
+		Platform.runLater(this::hookTabFolderSkin);
 	}
 
-	@SuppressWarnings("unchecked")
 	private void hookTabFolderSkin() {
 		try {
-			Field f_tabHeaderArea = TabPaneSkin.class.getDeclaredField("tabHeaderArea"); //$NON-NLS-1$
-			f_tabHeaderArea.setAccessible(true);
+			Node tabHeaderAreaNode = getSkinnable().lookup(".tab-header-area"); //$NON-NLS-1$
+			Node headersRegionNode = getSkinnable().lookup(".headers-region"); //$NON-NLS-1$
+			if (!(tabHeaderAreaNode instanceof Pane) || !(headersRegionNode instanceof Pane)) {
+				return;
+			}
 
-			final Pane tabHeaderArea = (StackPane) f_tabHeaderArea.get(this);
+			final Pane tabHeaderArea = (Pane) tabHeaderAreaNode;
+			this.headersRegion = (Pane) headersRegionNode;
 			tabHeaderArea.setOnDragOver(new EventHandler<DragEvent>() {
 				@Override
 				public void handle(DragEvent e) {
@@ -79,10 +77,7 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 				}
 			});
 
-			Field f_headersRegion = tabHeaderArea.getClass().getDeclaredField("headersRegion"); //$NON-NLS-1$
-			f_headersRegion.setAccessible(true);
-
-			final Pane headersRegion = (StackPane) f_headersRegion.get(tabHeaderArea);
+			final Pane headersRegion = this.headersRegion;
 			final EventHandler<MouseEvent> handler = new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent event) {
@@ -143,27 +138,6 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 					DnDTabPaneSkin.this.tabPane_handleDragDone(event);
 				}
 			});
-
-			Field field = TabPaneSkin.class.getDeclaredField("openTabAnimation"); //$NON-NLS-1$
-			field.setAccessible(true);
-			this.openAnimation = (StyleableProperty<Object>) field.get(this);
-
-			field = TabPaneSkin.class.getDeclaredField("closeTabAnimation"); //$NON-NLS-1$
-			field.setAccessible(true);
-			this.closeAnimation = (StyleableProperty<Object>) field.get(this);
-
-			for (Class<?> cl : getClass().getDeclaredClasses()) {
-				if ("TabAnimation".equals(cl.getSimpleName())) { //$NON-NLS-1$
-					for (Enum<?> enumConstant : (Enum<?>[]) cl.getEnumConstants()) {
-						if ("NONE".equals(enumConstant.name())) { //$NON-NLS-1$
-							this.noneEnum = enumConstant;
-							break;
-						}
-					}
-					break;
-				}
-
-			}
 		} catch (Throwable t) {
 			// // TODO Auto-generated catch block
 			t.printStackTrace();
@@ -172,9 +146,7 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 
 	void tabPane_handleDragStart(MouseEvent event) {
 		try {
-			Field f_tab = event.getSource().getClass().getDeclaredField("tab"); //$NON-NLS-1$
-			f_tab.setAccessible(true);
-			Tab t = (Tab) f_tab.get(event.getSource());
+			Tab t = tabForHeader((Node) event.getSource());
 
 			if (t != null && efx_canStartDrag(t)) {
 				DRAGGED_TAB = t;
@@ -256,9 +228,7 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 
 		if (referenceNode != null) {
 			try {
-				Field field = referenceNode.getClass().getDeclaredField("tab"); //$NON-NLS-1$
-				field.setAccessible(true);
-				Tab tab = (Tab) field.get(referenceNode);
+				Tab tab = tabForHeader(referenceNode);
 
 				boolean noMove = false;
 				if (tab == draggedTab) {
@@ -333,9 +303,7 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 
 		if (referenceNode != null) {
 			try {
-				Field field = referenceNode.getClass().getDeclaredField("tab"); //$NON-NLS-1$
-				field.setAccessible(true);
-				Tab tab = (Tab) field.get(referenceNode);
+				Tab tab = tabForHeader(referenceNode);
 
 				boolean noMove = false;
 				if( tab == null ) {
@@ -361,20 +329,8 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 				}
 
 				if (!noMove) {
-					StyleOrigin openOrigin = this.openAnimation.getStyleOrigin();
-					StyleOrigin closeOrigin = this.closeAnimation.getStyleOrigin();
-					Object openValue = this.openAnimation.getValue();
-					Object closeValue = this.closeAnimation.getValue();
-					try {
-						this.openAnimation.setValue(this.noneEnum);
-						this.closeAnimation.setValue(this.noneEnum);
-						efx_dropped(draggedTab, tab, type);
-						event.setDropCompleted(true);
-					} finally {
-						this.openAnimation.applyStyle(openOrigin, openValue);
-						this.closeAnimation.applyStyle(closeOrigin, closeValue);
-					}
-
+					efx_dropped(draggedTab, tab, type);
+					event.setDropCompleted(true);
 				} else {
 					event.setDropCompleted(false);
 				}
@@ -457,6 +413,17 @@ public class DnDTabPaneSkin extends TabPaneSkin implements DndTabPaneFactory.Dra
 			return this.clipboardDataFunction.apply(t);
 		}
 		return System.identityHashCode(t) + ""; //$NON-NLS-1$
+	}
+
+	private Tab tabForHeader(Node header) {
+		if (headersRegion == null) {
+			return null;
+		}
+
+		int index = headersRegion.getChildren().indexOf(header);
+		return index >= 0 && index < getSkinnable().getTabs().size()
+				? getSkinnable().getTabs().get(index)
+				: null;
 	}
 
 }

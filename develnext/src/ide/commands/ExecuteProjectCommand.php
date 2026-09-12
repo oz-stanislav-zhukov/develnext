@@ -198,8 +198,18 @@ class ExecuteProjectCommand extends AbstractCommand
         $classPaths = flow($this->behaviour->getSourceDirectories(), $this->behaviour->getProfileModules(['jar']))
             ->toArray();
 
+        $javaBin = 'java';
+        if ($jrePath = Ide::get()->getJrePath()) {
+            $javaBin = "$jrePath/bin/java";
+        }
+
+        $javafxPath = Ide::getOwnFile('lib/javafx');
+
         $args = [
-            'java',
+            $javaBin,
+            '--module-path', "$javafxPath",
+            '--add-modules', 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing',
+            '--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web',
             '-cp',
             str::join($classPaths, File::PATH_SEPARATOR),
             '-XX:+UseG1GC', '-Xms128M', '-Xmx512m', '-Dfile.encoding=UTF-8', '-Djphp.trace=true',

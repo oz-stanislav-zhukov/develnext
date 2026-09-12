@@ -1195,7 +1195,8 @@ class Project
 
         $this->inspectors = [];
 
-        $this->inspectorLoaderThreadPoll->shutdown();
+        Logger::debug("Shutdown project inspector loading pool");
+        $this->inspectorLoaderThreadPoll->shutdownNow();
     }
 
     function free()

@@ -1,16 +1,12 @@
 package org.develnext.ide;
 
-import javafx.application.Platform;
-import javafx.embed.swing.SwingNode;
-
-import javax.swing.*;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.util.*;
 
 public class Launcher {
     public static final String[] defaultJvmArgs = {
-            "-Xms256M", "-XX:ReservedCodeCacheSize=150m", "-XX:+UseConcMarkSweepGC", "-Dsun.io.useCanonCaches=false",
+            "-Xms256M", "-Xmx1280M", "-XX:ReservedCodeCacheSize=150m",
             "-Djava.net.preferIPv4Stack=true", "-Dfile.encoding=UTF-8", "-Ddevelnext.launcher=root"
     };
 
@@ -54,27 +50,18 @@ public class Launcher {
         return both.toArray(new String[both.size()]);
     }
 
-    public boolean isJava8FxExists() {
-        try {
-            Class.forName("javafx.application.Platform");
-            Class.forName("javafx.embed.swing.SwingNode");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
-
     public void start() throws URISyntaxException, IOException {
-        if (!isJava8FxExists()) {
-            JOptionPane.showMessageDialog(null, "Oracle/Open Java Runtime 8+ required with JavaFX", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
         rootDir = new File(Launcher.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()).getParentFile();
 
         String[] jvmArgs = fetchJvmArgs();
+        String javaExecutable = new File(rootDir, "tools/jre/bin/" + (System.getProperty("os.name").toLowerCase().contains("windows") ? "java.exe" : "java")).getAbsolutePath();
 
-        jvmArgs = concatArrays(new String[]{"java"}, jvmArgs);
+        jvmArgs = concatArrays(new String[]{
+                javaExecutable,
+                "--module-path", new File(rootDir, "lib/javafx").getAbsolutePath(),
+                "--add-modules", "javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing",
+                "--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web"
+        }, jvmArgs);
 
         String[] args = concatArrays(jvmArgs, new String[]{
                 "-Ddevelnext.launcher=root",

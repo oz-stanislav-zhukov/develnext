@@ -53,12 +53,12 @@ class SimpleTextPropertyEditor extends ElementPropertyEditor
     {
         parent::setTooltip($tooltip);
 
-        if ($this->tooltip && $this->textField) {
+        if ($this->tooltip && $this->content) {
             $tooltip = new UXTooltip();
             $tooltip->text = $this->tooltip;
             UiUtils::setWatchingFocusable($tooltip);
 
-            $this->textField->tooltip = $tooltip;
+            $this->content->tooltip = $tooltip;
         }
     }
 

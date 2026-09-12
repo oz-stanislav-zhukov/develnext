@@ -19,16 +19,17 @@
   </classPath>
   <jre>
     <path>tools/jre</path>
-    <bundledJre64Bit>false</bundledJre64Bit>
-    <bundledJreAsFallback>false</bundledJreAsFallback>
-    <minVersion></minVersion>
+    <requiresJdk>false</requiresJdk>
+    <requires64Bit>true</requires64Bit>
+    <minVersion>25</minVersion>
     <maxVersion></maxVersion>
-    <jdkPreference>jreOnly</jdkPreference>
-    <runtimeBits>64/32</runtimeBits>
     <initialHeapSize>384</initialHeapSize>
     <maxHeapSize>1024</maxHeapSize>
 
     <opt>-XX:+UseG1GC</opt>
+    <opt>--module-path="%EXEDIR%\lib\javafx"</opt>
+    <opt>--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing</opt>
+    <opt>--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web</opt>
     <opt>-Dfile.encoding=UTF-8</opt>
     <opt>-Ddevelnext.launcher=root</opt>
     <opt>-Dprism.verbose=true</opt>

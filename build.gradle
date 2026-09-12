@@ -1,6 +1,13 @@
 import org.gradle.internal.os.OperatingSystem;
 
-def javaVersion = '1.8';
+def javaVersion = 25
+def javafxVersion = '25.0.4'
+def javafxPlatform = providers.gradleProperty('javafxPlatform').getOrElse(
+        OperatingSystem.current().isWindows() ? 'win' : 'linux'
+)
+def sourceRepositoryDir = file("$rootDir/.gradle/source-repo")
+
+System.setProperty('maven.repo.local', sourceRepositoryDir.absolutePath)
 
 buildscript {
     ext {
@@ -11,49 +18,85 @@ buildscript {
     }
 }
 
-/*buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.1'
-    }
-}*/
-
-task wrapper(type: Wrapper) {
-    gradleVersion = 2.12;
+wrapper {
+    gradleVersion = '9.7.1'
 }
+
+task installJphpSource(type: Exec) {
+    workingDir "$rootDir/3rd-party/jphp"
+    commandLine 'cmd', '/c', 'gradlew.bat', 'publishSource'
+}
+
+task installWizardSource(type: Exec, dependsOn: installJphpSource) {
+    workingDir "$rootDir/3rd-party/wizard-framework"
+    commandLine 'cmd', '/c', 'gradlew.bat', 'publishSource'
+}
+
+task prepareSourceDependencies(dependsOn: installWizardSource)
 
 
 allprojects {
     apply plugin: 'idea'
-    apply plugin: 'java'
-    apply plugin: 'maven'
+    apply plugin: 'java-library'
 
     project.group = 'org.develnext'
     project.version = projectVersion
 
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(javaVersion)
+        }
+    }
 
     repositories {
-        mavenLocal()
-        jcenter()
+        maven { url = sourceRepositoryDir.toURI() }
         mavenCentral()
     }
 
+    configurations.runtimeClasspath {
+        exclude group: 'org.openjfx'
+    }
+
+    dependencies {
+        compileOnly("org.openjfx:javafx-base:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-graphics:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-controls:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-fxml:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-media:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-web:${javafxVersion}:${javafxPlatform}") { transitive = false }
+        compileOnly("org.openjfx:javafx-swing:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    }
+
     task sourcesJar(type: Jar, dependsOn: 'classes') {
-        classifier = 'sources'
+        archiveClassifier.set('sources')
         from sourceSets.main.allSource
     }
 
-    configurations {
-        provided
+    tasks.withType(JavaCompile) {
+        dependsOn rootProject.prepareSourceDependencies
     }
+}
 
-    sourceSets {
-        main { compileClasspath += configurations.provided }
+configurations {
+    javafxRuntime
+    launch4jRuntime
+    launch4jWorkdir
+}
+
+dependencies {
+    javafxRuntime("org.openjfx:javafx-base:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-graphics:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-controls:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-fxml:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-media:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-web:${javafxVersion}:${javafxPlatform}") { transitive = false }
+    javafxRuntime("org.openjfx:javafx-swing:${javafxVersion}:${javafxPlatform}") { transitive = false }
+
+    launch4jRuntime('net.sf.launch4j:launch4j:3.50') {
+        exclude group: 'com.thoughtworks.xstream', module: 'xstream'
     }
+    launch4jRuntime 'com.thoughtworks.xstream:xstream:1.4.21'
+    launch4jWorkdir('net.sf.launch4j:launch4j:3.50:workdir-win32') { transitive = false }
 }
 
 subprojects {
@@ -105,7 +148,7 @@ subprojects {
         }
     }
 
-    if (it.name.startsWith("bundles/") || it.name.endsWith("-bundle")) {
+    if (it.path.startsWith(":bundles:") || it.name.endsWith("-bundle")) {
         println "-> Detecting bundle '$it.name' ...";
 
         def resFile = file("$projectDir/.resource")
@@ -124,8 +167,8 @@ subprojects {
             jar {
                 doLast {
                     copy {
-                        from jar.archivePath
-                        from(pr.configurations.runtime) {
+                        from jar.archiveFile.get().asFile
+                        from(pr.configurations.runtimeClasspath) {
                             exclude '**/jphp-runtime-*.jar'
                         }
 
@@ -166,7 +209,7 @@ subprojects {
         }
     }
 
-    if (it.name.startsWith("stubs/")) {
+    if (it.path.startsWith(":stubs:")) {
         sourceSets {
             main {
                 resources.srcDirs = ['src']
@@ -177,61 +220,63 @@ subprojects {
 
 project(':jphp-desktop-hotkey-ext') {
     dependencies {
-        compile "org.develnext.jphp:jphp-runtime:$jphpVersion"
-        compile fileTree(dir: 'lib', include: ['*.jar'])
+        implementation "org.develnext.jphp:jphp-runtime:$jphpVersion"
+        implementation fileTree(dir: 'lib', include: ['*.jar'])
     }
 }
 
 project(':dn-app-framework') {
     dependencies {
-        compile "org.develnext.jphp:jphp-core:$jphpVersion"
-        compile "org.develnext.jphp:jphp-gui-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-core:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-gui-ext:$jphpVersion"
     }
 }
 
 project(':develnext') {
     apply plugin: 'application'
 
+    startScripts.dependsOn rootProject.prepareSourceDependencies
+
     dependencies {
-        compile "org.develnext.jphp:jphp-core:$jphpVersion"
-        compile "org.develnext.jphp:jphp-gui-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-gui-desktop-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-gui-systemtray-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-parser-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-core:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-gui-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-gui-desktop-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-gui-systemtray-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-parser-ext:$jphpVersion"
 
-        compile project(':jphp-gui-tabs-ext')
+        implementation project(':jphp-gui-tabs-ext')
 
-        compile project(':develnext-launcher')
-        compile project(':develnext-designer')
-        compile project(':jphp-gui-richtext-ext')
-        compile project(':dn-app-framework')
-        compile project(':develnext-doc')
+        implementation project(':develnext-launcher')
+        implementation project(':develnext-designer')
+        implementation project(':jphp-gui-richtext-ext')
+        implementation project(':dn-app-framework')
+        implementation project(':develnext-doc')
 
         // platforms
         file("$rootDir.path/platforms").listFiles().each { file ->
             if (file.directory && file.name.startsWith("develnext-") && file.name.endsWith("-platform")) {
-                compile project(":platforms/$file.name")
+                implementation project(":platforms:$file.name")
             }
         }
 
         // bundles
         file("$rootDir.path/bundles").listFiles().each { file ->
             if (file.directory && file.name.startsWith("dn-") && file.name.endsWith("-bundle")) {
-                provided project(":bundles/$file.name")
+                compileOnly project(":bundles:$file.name")
             }
         }
 
-        compile "org.develnext.jphp:jphp-xml-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-json-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-yaml-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-zend-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-sql-ext:$jphpVersion"
-        compile "org.develnext.jphp:jphp-debugger:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-xml-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-zip-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-json-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-yaml-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-zend-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-sql-ext:$jphpVersion"
+        implementation "org.develnext.jphp:jphp-debugger:$jphpVersion"
 
-        compile "org.develnext.framework:modules/wizard-localization:$wizardVersion"
+        implementation "org.develnext.framework:modules/wizard-localization:$wizardVersion"
+        runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
 
         //compile fileTree(dir: 'libs', include: '*.jar')
     }
 }
-

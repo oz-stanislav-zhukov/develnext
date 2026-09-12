@@ -30,7 +30,11 @@ import static org.fxmisc.wellbehaved.event.EventPattern.keyReleased;
 import static org.fxmisc.wellbehaved.event.EventPattern.mouseClicked;
 
 abstract public class AbstractCodeArea extends CodeArea {
-    private ExecutorService executor;
+    private static final ExecutorService HIGHLIGHTING_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "DevLine syntax highlighting");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private int tabSize;
     private boolean showGutter;
@@ -68,8 +72,6 @@ abstract public class AbstractCodeArea extends CodeArea {
         setPopupAnchorOffset(new Point2D(4, 4));*/
 
         getStyleClass().addAll("syntax-text-area");
-
-        executor = Executors.newSingleThreadExecutor();
 
         richChanges()
                 .filter(new Predicate<RichTextChange<Collection<String>, String, Collection<String>>>() {
@@ -317,7 +319,7 @@ abstract public class AbstractCodeArea extends CodeArea {
                 return computeHighlighting(text);
             }
         };
-        executor.execute(task);
+        HIGHLIGHTING_EXECUTOR.execute(task);
         return task;
     }
 

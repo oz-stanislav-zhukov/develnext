@@ -126,8 +126,9 @@ class WindowsApplicationBuildType extends AbstractBuildType
 
         $jreHome = Ide::get()->getJrePath();
         $launch4j = Ide::get()->getLaunch4JProgram();
+        $launch4jPath = Ide::get()->getLaunch4JPath();
 
-        if (!$launch4j) {
+        if (!$launch4j || !$launch4jPath) {
             UXDialog::showAndWait('Невозможно собрать исполняемый файл, не найдена утилита Launch4j', 'ERROR');
 
             return false;
@@ -174,7 +175,10 @@ class WindowsApplicationBuildType extends AbstractBuildType
         $template->apply(null, $st);
         $st->close();
 
-        $process = new Process([$launch4j, $configPath], $configPath->getParent(), Ide::get()->makeEnvironment());
+        $process = new Process([
+            $launch4j, '-Djava.awt.headless=true', '-cp', "$launch4jPath/launch4j.jar" . File::PATH_SEPARATOR . "$launch4jPath/lib/*",
+            'net.sf.launch4j.Main', $configPath
+        ], $launch4jPath, Ide::get()->makeEnvironment());
 
         return $process->start();
     }
@@ -215,8 +219,9 @@ class WindowsApplicationBuildType extends AbstractBuildType
 
         $jreHome = Ide::get()->getJrePath();
         $launch4j = Ide::get()->getLaunch4JProgram();
+        $launch4jPath = Ide::get()->getLaunch4JPath();
 
-        if (!$launch4j) {
+        if (!$launch4j || !$launch4jPath) {
             UXDialog::showAndWait('Невозможно собрать исполняемый файл, не найдена утилита Launch4j', 'ERROR');
 
             return false;

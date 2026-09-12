@@ -253,14 +253,13 @@ class ServiceManager
 
     public function shutdown()
     {
-        $class = new \ReflectionClass($this);
+        foreach (['accountService', 'profileService', 'ideService', 'projectArchiveService',
+                  'noticeService', 'fileService', 'iconService'] as $propertyName) {
+            $service = $this->{$propertyName};
 
-        foreach ($class->getProperties() as $property) {
-            $property->setAccessible(true);
-            $value = $property->getValue($this);
-
-            if ($value instanceof AbstractService) {
-                unset($this->{$property->getName()});
+            if ($service instanceof AbstractService) {
+                $service->shutdown();
+                $this->{$propertyName} = null;
             }
         }
     }

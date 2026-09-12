@@ -1,91 +1,159 @@
-# DevelNext
+# DevelNext 26
 
-> GUI and IDE for php based on jphp, for beginners only.
+> GUI and IDE for PHP powered by JPHP.
 
-![DevelNext Logo](https://github.com/jphp-compiler/develnext/raw/master/develnext/src/.data/img/splash.png)
+![DevelNext Logo](develnext/src/.data/img/splash.png)
+
+> **Current modernization branch:** JDK 25 / JavaFX 25 / Gradle 9.x.
 
 ---
 
-**Dependencies**
+## Current toolchain
 
-- jphp 0.9.+ (not published yet, you can build it from the jphp sources!)
-- java 1.8+ (jre)
-- gradle 2.4+
-- launch4j 3.8
+- **JDK 25**
+- **JavaFX 25.0.4**
+- **Gradle 9.7.1**
+- **JPHP** built from source
+- **JPHP GUI / Wizard / RichTextFX** built from source
+- **Launch4j** for Windows application packaging
+- **MPL 2.0**
 
-### How to get the DevelNext IDE distrubutive?
+The current build no longer requires the old Java 8 + JavaFX 8 runtime or manual unpublished JPHP artifacts in `~/.m2`.
 
-Install JDK, clone repo and use the following console commands:
+## Build the IDE
 
+Clone the repository with submodules:
+
+```bash
+git clone --recursive <repository-url>
+cd develnext
 ```
-cd /path/to/repo
 
-// fetch all submodules (jphp, richtextfx, etc.)
-git submodule update --init
+If the repository was cloned without submodules:
 
-// install rich text fx
-cd 3rd-party/RichTextFX
-./gradlew install
+```bash
+git submodule update --init --recursive
+```
 
-// install jphp
-cd ../3rd-party/jphp
-./gradlew install
+### Windows
 
-// install wizard-framework
-cd ../3rd-party/wizard-framework
-./gradlew npmInstall installGulp install
+```bat
+gradlew.bat distIdeWindows
+```
 
-cd ../../
+The Windows distribution is generated in:
 
-// for windows
-./gradlew distIdeWindows
+```text
+develnext/build/install/develnext
+```
 
-// for linux
+The build prepares the required source-based JPHP/Wizard dependencies through the repository-local build flow.
+
+### Linux
+
+The project still contains a Linux distribution task:
+
+```bash
 ./gradlew distIdeLinux
 ```
 
-You can find the builded distrubutive in `develnext/build/install/develnext`.
+The current modernization work has primarily been verified on Windows, so Linux should be treated as requiring a separate smoke test.
 
-### License
+## Development status
 
-Under MPL 2.0 (https://www.mozilla.org/MPL/2.0/)
+The Java 25 modernization currently covers the legacy IDE/runtime path:
 
-### Как получить дистрибутив DevelNext?
+- IDE startup
+- project loading
+- PHP source editing and syntax highlighting
+- visual `FormEditor`
+- bundle loading
+- JPHP application execution
+- JavaFX 25 desktop forms
+- clean IDE/runtime shutdown
+- Windows distribution build
 
-Установите JDK (Java), склонируйте репозиторий и используйте следующие консольные команды:
+The project format is intentionally kept compatible with legacy DevelNext projects where possible.
 
+## License
+
+Licensed under the **Mozilla Public License 2.0 (MPL-2.0)**.
+
+https://www.mozilla.org/MPL/2.0/
+
+---
+
+# Русский
+
+> GUI и IDE для PHP на базе JPHP.
+
+## Текущий стек
+
+- **JDK 25**
+- **JavaFX 25.0.4**
+- **Gradle 9.7.1**
+- **JPHP** собирается из исходников
+- **JPHP GUI / Wizard / RichTextFX** собираются из исходников
+- **Launch4j** используется для упаковки Windows-приложений
+- лицензия **MPL 2.0**
+
+Старая обязательная связка Java 8 + JavaFX 8 больше не является основой текущей ветки модернизации.
+
+## Сборка IDE
+
+Клонируйте репозиторий вместе с подмодулями:
+
+```bash
+git clone --recursive <repository-url>
+cd develnext
 ```
-cd /path/to/repo
 
-// fetch all submodules (jphp, richtextfx, etc.)
-git submodule update --init
+Если репозиторий уже был клонирован без подмодулей:
 
-// install rich text fx
-cd 3rd-party/RichTextFX
-gradlew install
-
-// install jphp
-cd ../3rd-party/jphp
-gradlew install
-
-// install wizard-framework for web
-cd ../3rd-party/wizard-framework
-gradlew npmInstall installGulp install
-
-cd ../../
-
-// for windows
-gradlew distIdeWindows
-
-// for linux
-gradlew distIdeLinux
+```bash
+git submodule update --init --recursive
 ```
 
-Найти собранный дистрибутив можно будет в папке `develnext/build/install/develnext`.
+### Windows
 
-Если проект не собирается, значит на текущем этапе в develnext используется еще неопубликованная версия jphp,
-поэтому ее нужно собрать вручную с нужной ветки (см. версию), выполнив команду `gradlew install` в папке исходников jphp.
+```bat
+gradlew.bat distIdeWindows
+```
 
-### Лицензия
+Готовый дистрибутив:
 
-Under MPL 2.0 (https://www.mozilla.org/MPL/2.0/)
+```text
+develnext/build/install/develnext
+```
+
+Необходимые JPHP/Wizard-зависимости собираются из исходников через локальный build flow репозитория — вручную подкладывать старые SNAPSHOT JAR в `~/.m2` не требуется.
+
+### Linux
+
+В проекте остаётся задача:
+
+```bash
+./gradlew distIdeLinux
+```
+
+Основная проверка текущей модернизации выполнялась на Windows, поэтому Linux требует отдельного smoke-теста.
+
+## Статус
+
+На JDK 25 / JavaFX 25 уже проверены:
+
+- запуск IDE
+- открытие проекта
+- PHP-редактор и подсветка синтаксиса
+- визуальный дизайнер форм
+- загрузка bundles
+- запуск JPHP-приложения
+- JavaFX 25 UI
+- корректное завершение процессов
+- сборка Windows-дистрибутива
+
+## Лицензия
+
+Проект распространяется по лицензии **Mozilla Public License 2.0 (MPL-2.0)**.
+
+https://www.mozilla.org/MPL/2.0/

@@ -2,8 +2,6 @@
 project.version = ''
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -12,5 +10,5 @@ sourceSets {
 }
 
 dependencies {
-    compile 'org.xerial:sqlite-jdbc:3.16.1'
+    implementation 'org.xerial:sqlite-jdbc:3.16.1'
 }

@@ -1,8 +1,6 @@
 project.version = ''
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
 }
 
@@ -11,7 +9,7 @@ sourceSets {
 }
 
 dependencies {
-    compile ("org.develnext.jphp:jphp-gui-jfoenix-ext:$jphpVersion") {
+    implementation ("org.develnext.jphp:jphp-gui-jfoenix-ext:$jphpVersion") {
         exclude group: 'org.develnext', module: 'jphp-gui-ext'
     }
 }

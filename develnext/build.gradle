@@ -3,73 +3,112 @@ apply plugin: 'application'
 project.version = '1.0'
 
 project.ext.distVersion = System.getProperty("version", "SNAPSHOT");
+def java25Home = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(25)
+}.map { launcher -> launcher.metadata.installationPath.asFile }
+def javafxRuntime = rootProject.configurations.javafxRuntime
+def launch4jRuntime = rootProject.configurations.launch4jRuntime
+def launch4jWorkdir = rootProject.configurations.launch4jWorkdir
+def launch4jRuntimeDir = layout.buildDirectory.dir('generated/launch4j')
+def javafxModules = 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing'
 
 repositories {
-    mavenLocal()
-    jcenter()
     mavenCentral()
-
-    repositories {
-        maven {
-            url 'https://oss.sonatype.org/content/repositories/snapshots/'
-        }
-    }
 }
 
 sourceSets {
     main.resources.srcDirs = ['src']
 }
 
-run {
-    mainClassName = 'php.runtime.launcher.Launcher'
-    jvmArgs += ["-Dfile.encoding=UTF-8", "-Xms256m", "-Xms1280m"]
+application {
+    mainClass = 'php.runtime.launcher.Launcher'
 }
 
-jar.archiveName = 'DevelNext.jar'
+run {
+    classpath = classpath.filter { !it.name.startsWith('javafx-') }
+    jvmArgs += ["--module-path", javafxRuntime.asPath, "--add-modules", javafxModules,
+                "--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web", "-Dfile.encoding=UTF-8", "-Xms256m", "-Xmx1280m"]
+}
+
+jar.archiveFileName.set('DevelNext.jar')
 
 clean {
     delete = [] //clear out existing files to delete
     delete 'build/install', 'build/libs', 'build/tmp', 'build/resources', 'build/scripts'
 }
 
-manifest {
-    attributes 'Main-Class': 'org.develnext.jphp.ext.javafx.FXLauncher'
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.develnext.jphp.ext.javafx.FXLauncher'
+    }
 }
 
 def buildISS = { issFile ->
     def innoSetupBin = "$project.rootDir/develnext-tools/innoSetup/ISCC.exe".replace("\\", "/")
 
     if (System.properties['os.name'].toLowerCase().contains('linux')) {
-        exec {
+        providers.exec {
             commandLine 'wine', innoSetupBin, '/Qp', issFile
-        }
+        }.result.get().assertNormalExitValue()
     } else {
-        exec {
+        providers.exec {
             commandLine innoSetupBin, '/Qp', issFile
-        }
+        }.result.get().assertNormalExitValue()
     }
 }
 
 def makeExe = { file ->
     if (System.properties['os.name'].toLowerCase().contains('windows')) {
-        exec {
-            commandLine "$project.rootDir/develnext-tools/Launch4j/launch4jc.exe"
-            args file
-        }
+        def launch4jDir = launch4jRuntimeDir.get().asFile
+        def launch4jClasspath = files("$launch4jDir/launch4j.jar", fileTree("$launch4jDir/lib").matching { include '*.jar' }).asPath
+
+        providers.exec {
+            workingDir launch4jDir
+            commandLine new File(java25Home.get(), 'bin/java.exe'), '-Djava.awt.headless=true',
+                    '-cp', launch4jClasspath, 'net.sf.launch4j.Main', file
+        }.result.get().assertNormalExitValue()
     } else if (System.properties['os.name'].toLowerCase().contains('linux')) {
         new File("$project.rootDir/develnext-tools/Launch4jLinux/launch4j").setExecutable(true, true);
         new File("$project.rootDir/develnext-tools/Launch4jLinux/bin/windres").setExecutable(true, true);
         new File("$project.rootDir/develnext-tools/Launch4jLinux/bin/ld").setExecutable(true, true);
 
-        exec {
+        providers.exec {
             commandLine "$project.rootDir/develnext-tools/Launch4jLinux/launch4j"
             args file
-        }
+        }.result.get().assertNormalExitValue()
     }
+}
+
+task prepareLaunch4jRuntime(type: Sync) {
+    from({ zipTree(launch4jWorkdir.singleFile) }) {
+        eachFile { details ->
+            def segments = details.relativePath.segments
+
+            if (segments.length > 1 && segments[0] == 'launch4j-3.50-workdir-win32') {
+                details.relativePath = new org.gradle.api.file.RelativePath(!details.directory, segments.drop(1) as String[])
+            } else {
+                details.exclude()
+            }
+        }
+        includeEmptyDirs = false
+    }
+    from(launch4jRuntime) {
+        into 'lib'
+        exclude 'launch4j-*.jar'
+    }
+    from({ launch4jRuntime.filter { it.name.startsWith('launch4j-') } }) {
+        rename { 'launch4j.jar' }
+    }
+    into launch4jRuntimeDir
 }
 
 task prepareDist(dependsOn: ['installDist']) {
     doLast {
+        copy {
+            from javafxRuntime
+            into "$project.buildDir/install/$project.name/lib/javafx"
+        }
+
         fileTree("$project.buildDir/install/$project.name/lib").visit { FileVisitDetails el ->
             def name = el.getName()
             name = name.replaceAll(/(-[0-9]+|\.[0-9]+|-SNAPSHOT)/, "");
@@ -100,7 +139,7 @@ task prepareDist(dependsOn: ['installDist']) {
 
 task distWindowsPatch(type: Zip, dependsOn: ['clean', 'distPatch']) {
     from "$project.buildDir/install/$project.name"
-    archiveName "DevelNext.WindowsPatch-${project.ext.distVersion}.zip"
+    archiveFileName.set("DevelNext.WindowsPatch-${project.ext.distVersion}.zip")
 
     doLast {
         def issFile = "$project.rootDir/develnext/windowsSetup/innopatchsetup.iss".replace("\\", "/")
@@ -122,7 +161,7 @@ task distLinuxPatch(type: Tar, dependsOn: ['clean', 'distPatch']) {
     def installDir = "$project.buildDir/install/$project.name"
 
     compression = Compression.GZIP
-    archiveName "DevelNext.LinuxPatch-${project.ext.distVersion}.tar.gz"
+    archiveFileName.set("DevelNext.LinuxPatch-${project.ext.distVersion}.tar.gz")
 
     from(installDir) {
         exclude('*.sh')
@@ -149,7 +188,7 @@ task distLinuxPatch(type: Tar, dependsOn: ['clean', 'distPatch']) {
         include('tools/Launch4jLinux/bin/windres')
         include('tools/Launch4jLinux/bin/ld')
 
-        fileMode = 0755
+        filePermissions { unix('rwxr-xr-x') }
     }
 
     doLast {
@@ -157,7 +196,7 @@ task distLinuxPatch(type: Tar, dependsOn: ['clean', 'distPatch']) {
 
         if (new File(uploadPath).isDirectory()) {
             copy {
-                from distLinuxPatch.archivePath
+                from distLinuxPatch.archiveFile.get().asFile
                 into "$uploadPath/YandexDisk"
             }
         }
@@ -168,10 +207,10 @@ task distLinuxPatch(type: Tar, dependsOn: ['clean', 'distPatch']) {
 task distPatch(dependsOn: ['prepareDist']) {
     doLast {
         if (System.properties['os.name'].toLowerCase().contains('windows')) {
-            exec {
+            providers.exec {
                 commandLine "$project.rootDir/develnext-tools/Launch4j/launch4jc.exe"
                 args "$project.rootDir/develnext/launcher/winLauncher.xml"
-            }
+            }.result.get().assertNormalExitValue()
         }
 
         copy {
@@ -195,12 +234,12 @@ task distIdeWindows(dependsOn: ['distIde']) {
         delete "$project.buildDir/install/$project.name/tools/Launch4jLinux"
 
         copy {
-            from "$project.rootDir/develnext-tools/jre"
+            from java25Home
             into "$project.buildDir/install/$project.name/tools/jre"
         }
 
         copy {
-            from "$project.rootDir/develnext-tools/Launch4j"
+            from launch4jRuntimeDir
             into "$project.buildDir/install/$project.name/tools/Launch4j"
         }
     }
@@ -225,6 +264,10 @@ task distIdeLinux(dependsOn: ['distIde']) {
 }
 
 task distIde(dependsOn: ['prepareDist']) {
+    if (System.properties['os.name'].toLowerCase().contains('windows')) {
+        dependsOn prepareLaunch4jRuntime
+    }
+
     doLast {
         makeExe("$project.rootDir/develnext/launcher/winLauncher.xml")
         makeExe("$project.rootDir/develnext/launcher/winLauncher-debug.xml")
@@ -278,8 +321,8 @@ task distIdeWindowsArchive(type: Zip, dependsOn: ['clean', 'distIdeWindows']) {
     def installDir = "$project.buildDir/install/$project.name"
     def timeStamp = new Date().format("dd-MM-yyyy-HH-mm")
 
-    archiveName "DevelNextWindows-${project.ext.distVersion}.${timeStamp}.zip"
-    includeEmptyDirs true
+    archiveFileName.set("DevelNextWindows-${project.ext.distVersion}.${timeStamp}.zip")
+    includeEmptyDirs = true
 
     from installDir
 }
@@ -292,8 +335,8 @@ task distIdeWindowsArchiveWithoutJRE(type: Zip, dependsOn: ['clean', 'distIdeWin
     def installDir = "$project.buildDir/install/$project.name"
     def timeStamp = new Date().format("dd-MM-yyyy-HH-mm")
 
-    archiveName "DevelNextWindows-${project.ext.distVersion}.${timeStamp}.Without-JRE.zip"
-    includeEmptyDirs true
+    archiveFileName.set("DevelNextWindows-${project.ext.distVersion}.${timeStamp}.Without-JRE.zip")
+    includeEmptyDirs = true
 
     from installDir
 }
@@ -306,8 +349,8 @@ task distIdeLinuxSetupWithoutJRE(type: Zip, dependsOn: ['clean', 'distIdeLinux']
     def installDir = "$project.buildDir/install/$project.name"
     def timeStamp = new Date().format("dd-MM-yyyy-HH-mm")
 
-    archiveName "DevelNextLinux-${project.ext.distVersion}.${timeStamp}.Without-JRE.zip"
-    includeEmptyDirs true
+    archiveFileName.set("DevelNextLinux-${project.ext.distVersion}.${timeStamp}.Without-JRE.zip")
+    includeEmptyDirs = true
 
     from(installDir) {
         exclude('*.sh')
@@ -334,7 +377,7 @@ task distIdeLinuxSetupWithoutJRE(type: Zip, dependsOn: ['clean', 'distIdeLinux']
         include('tools/Launch4jLinux/bin/windres')
         include('tools/Launch4jLinux/bin/ld')
 
-        fileMode = 0755
+        filePermissions { unix('rwxr-xr-x') }
     }
 }
 
@@ -343,7 +386,7 @@ task distIdeLinuxSetup(type: Tar, dependsOn: ['clean', 'distIdeLinux']) {
     def installDir = "$project.buildDir/install/$project.name"
 
     compression = Compression.GZIP
-    archiveName "DevelNextLinux-${project.ext.distVersion}.tar.gz"
+    archiveFileName.set("DevelNextLinux-${project.ext.distVersion}.tar.gz")
 
     from(installDir) {
         exclude('*.sh')
@@ -370,7 +413,7 @@ task distIdeLinuxSetup(type: Tar, dependsOn: ['clean', 'distIdeLinux']) {
         include('tools/Launch4jLinux/bin/windres')
         include('tools/Launch4jLinux/bin/ld')
 
-        fileMode = 0755
+        filePermissions { unix('rwxr-xr-x') }
     }
 }
 

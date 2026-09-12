@@ -78,7 +78,15 @@ abstract class AbstractService
 
     public function __destruct()
     {
-        $this->pool->shutdown();
+        $this->shutdown();
+    }
+
+    public function shutdown()
+    {
+        if (!$this->pool->isShutdown()) {
+            Logger::debug("Shutdown service pool " . get_class($this));
+            $this->pool->shutdownNow();
+        }
     }
 
     public function upload($methodName, array $files)
