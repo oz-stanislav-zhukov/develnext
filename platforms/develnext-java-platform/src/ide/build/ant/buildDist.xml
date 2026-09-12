@@ -76,6 +76,7 @@
                     <opt>--module-path="%EXEDIR%\lib\javafx"</opt>
                     <opt>--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing</opt>
                     <opt>--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web</opt>
+                    <opt>@%EXEDIR%\javafx-compatibility.args</opt>
                     <opt>-Dfile.encoding=UTF-8</opt>
                 </jre>
             </config>

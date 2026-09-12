@@ -154,6 +154,7 @@ class AntOneJarBuildType extends AbstractBuildType
 
         $project->copyModuleFiles($project->getRootDir() . "/build/dist/lib");
         FileUtils::copyDirectory($javafxRuntimePath, $project->getRootDir() . '/build/dist/lib/javafx');
+        FileUtils::copyFile(Ide::getOwnFile('javafx-compatibility.args'), $project->getRootDir() . '/build/dist/javafx-compatibility.args');
 
         $content = FileUtils::get('res://ide/build/ant/buildDist.xml');
         $content = str::replace($content, '#NAME#', $project->getName());
@@ -320,7 +321,7 @@ class AntOneJarBuildType extends AbstractBuildType
         if ($platform === 'win') {
             $script = "@echo off\r\nsetlocal\r\nset \"APP_HOME=%~dp0\"\r\n"
                 . "\"%APP_HOME%runtime\\bin\\javaw.exe\" --module-path \"%APP_HOME%lib\\javafx\" "
-                . "--add-modules $modules --enable-native-access=$nativeAccess -jar \"%APP_HOME%$name.jar\" %*\r\n";
+                . "--add-modules $modules --enable-native-access=$nativeAccess \"@%APP_HOME%javafx-compatibility.args\" -jar \"%APP_HOME%$name.jar\" %*\r\n";
             FileUtils::put("$dist/run.bat", $script);
 
             return;
@@ -334,6 +335,7 @@ class AntOneJarBuildType extends AbstractBuildType
                 'exec "$APP_HOME/runtime/bin/java" --module-path "$APP_HOME/lib/javafx" \\',
                 "  --add-modules $modules \\",
                 "  --enable-native-access=$nativeAccess \\",
+                '  "@$APP_HOME/javafx-compatibility.args" \',
                 "  -jar \"\$APP_HOME/$name.jar\" \"\$@\"",
                 '',
             ], "\n");
@@ -360,6 +362,7 @@ class AntOneJarBuildType extends AbstractBuildType
         static::movePortablePath("$dist/$name.jar", "$contents/app/$name.jar");
         static::movePortablePath("$dist/lib", "$contents/lib");
         static::movePortablePath("$dist/runtime", "$contents/runtime");
+        static::movePortablePath("$dist/javafx-compatibility.args", "$contents/javafx-compatibility.args");
         File::of("$contents/Resources")->mkdirs();
         File::of("$contents/MacOS")->mkdirs();
         FileUtils::put("$contents/Resources/icon.icns", Stream::getContents('res://.data/img/DevelNextIco.icns'));
@@ -371,6 +374,7 @@ class AntOneJarBuildType extends AbstractBuildType
             'exec "$CONTENTS/runtime/bin/java" --module-path "$CONTENTS/lib/javafx" \\',
             "  --add-modules $modules \\",
             "  --enable-native-access=$nativeAccess \\",
+            '  "@$CONTENTS/javafx-compatibility.args" \',
             "  -jar \"\$CONTENTS/app/$name.jar\" \"\$@\"",
             '',
         ], "\n");

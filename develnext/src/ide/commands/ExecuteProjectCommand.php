@@ -210,6 +210,7 @@ class ExecuteProjectCommand extends AbstractCommand
             '--module-path', "$javafxPath",
             '--add-modules', 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing',
             '--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web',
+            '@' . Ide::getOwnFile('javafx-compatibility.args')->getCanonicalPath(),
             '-cp',
             str::join($classPaths, File::PATH_SEPARATOR),
             '-XX:+UseG1GC', '-Xms128M', '-Xmx512m', '-Dfile.encoding=UTF-8', '-Djphp.trace=true',

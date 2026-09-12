@@ -609,6 +609,7 @@ abstract class AbstractForm extends UXForm
             try {
                 $this->layout = $loader->load($stream);
             } catch (IOException $e) {
+                $e->printJVMStackTrace();
                 throw new IOException("Unable to load {$stream->getPath()}, {$e->getMessage()}");
             }
 

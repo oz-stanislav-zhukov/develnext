@@ -23,6 +23,32 @@ def launch4jRuntimeDir = layout.buildDirectory.dir('generated/launch4j')
 def launch4jPatchClassesDir = layout.buildDirectory.dir('classes/launch4j-patch')
 def javafxModules = 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing'
 
+configurations {
+    legacyJfoenixRuntime
+}
+
+dependencies {
+    legacyJfoenixRuntime 'com.jfoenix:jfoenix:9.0.10'
+    legacyJfoenixRuntime "org.develnext.jphp:jphp-gui-jfoenix-ext:$jphpVersion"
+}
+
+def copyLegacyJfoenixRuntime = { destination ->
+    copy {
+        from configurations.legacyJfoenixRuntime
+        into "$destination/library/bundles/dn-jfoenix-bundle"
+        include 'jfoenix-*.jar', 'jphp-gui-jfoenix-ext-*.jar'
+        rename(/jfoenix-.*\.jar/, 'jfoenix.jar')
+        rename(/jphp-gui-jfoenix-ext-.*\.jar/, 'jphp-gui-jfoenix-ext.jar')
+    }
+}
+
+def copyJavaFxCompatibilityArgs = { destination ->
+    copy {
+        from "$projectDir/src/javafx-compatibility.args"
+        into destination
+    }
+}
+
 def copyPortableRuntimeSources = { destination ->
     portableRuntimeSources.each { platform, source ->
         if (source.present && file(source.get()).isDirectory()) {
@@ -268,6 +294,8 @@ task distPatch(dependsOn: ['prepareDist']) {
             from "$project.rootDir/develnext/misc"
             into "$project.buildDir/install/$project.name"
         }
+        copyLegacyJfoenixRuntime("$project.buildDir/install/$project.name")
+        copyJavaFxCompatibilityArgs("$project.buildDir/install/$project.name")
     }
 }
 
@@ -348,6 +376,8 @@ task distIde(dependsOn: ['prepareDist']) {
             from "$project.rootDir/develnext/misc"
             into "$project.buildDir/install/$project.name"
         }
+        copyLegacyJfoenixRuntime("$project.buildDir/install/$project.name")
+        copyJavaFxCompatibilityArgs("$project.buildDir/install/$project.name")
     }
 }
 

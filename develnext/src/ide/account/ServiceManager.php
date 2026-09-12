@@ -143,6 +143,9 @@ class ServiceManager
 
     public function updateStatus()
     {
+        Logger::warn("Skip update status. System disabled.");
+        return;
+
         if ($this->ideService) {
             if (Ide::get()->isIdle()) {
                 Logger::info("Skip update status, ide in idle mode ...");
