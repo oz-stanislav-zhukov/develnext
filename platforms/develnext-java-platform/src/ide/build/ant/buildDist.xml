@@ -4,10 +4,11 @@
     <property name="build" location="build"/>
     <property name="dist" location="build/dist"/>
     <property name="launch4j.dir" location="#LAUNCH4J_DIR#" />
-    <property name="jre.dir" location="#JRE_DIR#" />
+    <property name="java.runtime.dir" location="#JAVA_RUNTIME_DIR#" />
 
     <taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask">
         <classpath>
+            <pathelement location="${launch4j.dir}/launch4j-purejava-patch.jar" />
             <pathelement location="${launch4j.dir}/launch4j.jar" />
             <fileset dir="${launch4j.dir}/lib" includes="*.jar" />
         </classpath>
@@ -50,12 +51,14 @@
         <delete dir="${build}"/>
     </target>
 
-    <target name="copy-jre">
-        <mkdir dir="${dist}/jre" />
-        <copy todir="${dist}/jre" >
-            <fileset dir="${jre.dir}" includes="**"/>
+    <target name="copy-runtime">
+        <mkdir dir="${dist}/runtime" />
+        <copy todir="${dist}/runtime" >
+            <fileset dir="${java.runtime.dir}" includes="**"/>
         </copy>
     </target>
+
+    <target name="copy-jre" depends="copy-runtime" description="Legacy alias for copy-runtime" />
 
     <target name="launch4j">
         <launch4j>
@@ -65,7 +68,7 @@
                 <classPath mainClass="org.develnext.jphp.ext.javafx.FXLauncher">
                     <cp>lib/*</cp>
                 </classPath>
-                <jre minVersion="25" path="#L4J_JRE_PATH#" requiresJdk="false" requires64Bit="true">
+                <jre minVersion="25" path="#L4J_RUNTIME_PATH#" requiresJdk="false" requires64Bit="true">
                     <opt>--module-path="%EXEDIR%\lib\javafx"</opt>
                     <opt>--add-modules=javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing</opt>
                     <opt>--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web</opt>

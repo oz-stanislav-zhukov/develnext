@@ -10,7 +10,7 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="45.0" minWidth="445.0" prefHeight="166.0" prefWidth="465.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <CheckBox id="o_jre" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" prefHeight="17.0" prefWidth="417.0" text="Portable версия (добавить JRE)" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
+      <CheckBox id="o_runtime" disable="true" layoutX="14.0" layoutY="14.0" mnemonicParsing="false" prefHeight="17.0" prefWidth="417.0" selected="true" text="Встроенный runtime (JDK 25)" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
       <CheckBox id="o_oneJar" layoutX="14.0" layoutY="42.0" mnemonicParsing="false" prefHeight="17.0" prefWidth="417.0" text="Объединить все исходники в один исполняемый файл" />
       <Separator layoutX="14.0" layoutY="69.0" prefHeight="17.0" prefWidth="437.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
       <AnchorPane layoutX="14.0" layoutY="89.0" />

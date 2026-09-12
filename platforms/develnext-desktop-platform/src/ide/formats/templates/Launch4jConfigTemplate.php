@@ -8,7 +8,7 @@ class Launch4jConfigTemplate extends AbstractFileTemplate
     /**
      * @var string
      */
-    protected $jrePath;
+    protected $javaRuntimePath;
 
     /**
      * @var string
@@ -31,7 +31,8 @@ class Launch4jConfigTemplate extends AbstractFileTemplate
     public function getArguments()
     {
         return [
-            'JRE_PATH'      => $this->jrePath,
+            'JAVA_RUNTIME_PATH' => $this->javaRuntimePath,
+            'JRE_PATH'      => $this->javaRuntimePath,
             'EXE_NAME'      => $this->exeName,
             'ICO_FILE'      => $this->icoFile,
             'JAR_FILE'      => $this->jarFile,
@@ -42,17 +43,34 @@ class Launch4jConfigTemplate extends AbstractFileTemplate
     /**
      * @return string
      */
-    public function getJrePath()
+    public function getJavaRuntimePath()
     {
-        return $this->jrePath;
+        return $this->javaRuntimePath;
     }
 
     /**
+     * @param string $javaRuntimePath
+     */
+    public function setJavaRuntimePath($javaRuntimePath)
+    {
+        $this->javaRuntimePath = $javaRuntimePath;
+    }
+
+    /**
+     * @deprecated Use getJavaRuntimePath().
+     */
+    public function getJrePath()
+    {
+        return $this->getJavaRuntimePath();
+    }
+
+    /**
+     * @deprecated Use setJavaRuntimePath().
      * @param string $jrePath
      */
     public function setJrePath($jrePath)
     {
-        $this->jrePath = $jrePath;
+        $this->setJavaRuntimePath($jrePath);
     }
 
     /**

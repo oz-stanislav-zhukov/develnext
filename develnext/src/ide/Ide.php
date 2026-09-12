@@ -425,8 +425,8 @@ class Ide extends Application
     {
         $env = System::getEnv();
 
-        if ($this->getJrePath()) {
-            $env['JAVA_HOME'] = $this->getJrePath();
+        if ($javaRuntimePath = $this->getJavaRuntimePath()) {
+            $env['JAVA_HOME'] = $javaRuntimePath;
         }
 
         if ($this->getGradlePath()) {
@@ -457,7 +457,7 @@ class Ide extends Application
     public function getLaunch4JProgram()
     {
         if (Ide::get()->isWindows()) {
-            $launch4jPath = new File($this->getJrePath(), '/bin/java.exe');
+            $launch4jPath = new File($this->getJavaRuntimePath(), '/bin/java.exe');
         } else {
             $launch4jPath = new File($this->getToolPath(), '/Launch4jLinux/launch4j');
         }
@@ -559,33 +559,46 @@ class Ide extends Application
     }
 
     /**
-     * Вернуть путь к JRE среды (Java Runtime Environment).
+     * Вернуть путь к встроенному Java Runtime.
      *
      * @return null|File
      */
-    public function getJrePath()
+    public function getJavaRuntimePath()
     {
         $path = $this->getToolPath();
 
         if ($this->isWindows() || $this->isLinux()) {
-            $jrePath = new File($path, '/jre');
+            $javaRuntimePath = new File($path, '/runtime');
 
-            if ($this->isLinux() && (new File($path, '/jreLinux'))->isDirectory()) {
-                $jrePath = new File($path, '/jreLinux');
+            if (!$javaRuntimePath->isDirectory()) {
+                $legacyRuntimePath = $this->isLinux() && (new File($path, '/jreLinux'))->isDirectory()
+                    ? new File($path, '/jreLinux')
+                    : new File($path, '/jre');
+
+                $javaRuntimePath = $legacyRuntimePath;
             }
         } else {
-            $jrePath = null;
+            $javaRuntimePath = null;
         }
 
-        if (!$jrePath || !$jrePath->exists()) {
-            $jrePath = System::getEnv()['JAVA_HOME'];
+        if (!$javaRuntimePath || !$javaRuntimePath->exists()) {
+            $javaRuntimePath = System::getEnv()['JAVA_HOME'];
 
-            if ($jrePath) {
-                $jrePath = File::of($jrePath);
+            if ($javaRuntimePath) {
+                $javaRuntimePath = File::of($javaRuntimePath);
             }
         }
 
-        return $jrePath && $jrePath->exists() ? $jrePath->getCanonicalFile() : null;
+        return $javaRuntimePath && $javaRuntimePath->exists() ? $javaRuntimePath->getCanonicalFile() : null;
+    }
+
+    /**
+     * @deprecated Use getJavaRuntimePath().
+     * @return null|File
+     */
+    public function getJrePath()
+    {
+        return $this->getJavaRuntimePath();
     }
 
     /**
@@ -1719,12 +1732,12 @@ class Ide extends Application
      */
     public function startNew(array $args = [])
     {
-        $jrePath = $this->getJrePath();
+        $javaRuntimePath = $this->getJavaRuntimePath();
 
         $javaBin = 'java';
 
-        if ($jrePath) {
-            $javaBin = "$jrePath/bin/$javaBin";
+        if ($javaRuntimePath) {
+            $javaBin = "$javaRuntimePath/bin/$javaBin";
         }
 
         $args = flow([$javaBin, '-jar', 'DevelNext.jar'])->append($args)->toArray();

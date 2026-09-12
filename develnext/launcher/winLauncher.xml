@@ -18,7 +18,7 @@
     <cp>lib/*</cp>
   </classPath>
   <jre>
-    <path>tools/jre</path>
+    <path>tools/runtime</path>
     <requiresJdk>false</requiresJdk>
     <requires64Bit>true</requires64Bit>
     <minVersion>25</minVersion>

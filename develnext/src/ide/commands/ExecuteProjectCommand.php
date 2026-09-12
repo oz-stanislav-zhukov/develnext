@@ -199,11 +199,11 @@ class ExecuteProjectCommand extends AbstractCommand
             ->toArray();
 
         $javaBin = 'java';
-        if ($jrePath = Ide::get()->getJrePath()) {
-            $javaBin = "$jrePath/bin/java";
+        if ($javaRuntimePath = Ide::get()->getJavaRuntimePath()) {
+            $javaBin = "$javaRuntimePath/bin/java";
         }
 
-        $javafxPath = Ide::getOwnFile('lib/javafx');
+        $javafxPath = Ide::getOwnFile('lib/javafx')->getCanonicalFile();
 
         $args = [
             $javaBin,

@@ -43,7 +43,7 @@ class WindowsApplicationBuildType extends AbstractBuildType
      */
     function getName()
     {
-        return 'Windows Приложение';
+        return 'Windows Application';
     }
 
     /**
@@ -51,7 +51,7 @@ class WindowsApplicationBuildType extends AbstractBuildType
      */
     function getDescription()
     {
-        return 'Программа для Windows в виде исполняемого файла (exe)';
+        return 'Программа для Windows в виде исполняемого файла';
     }
 
     /**
@@ -75,9 +75,19 @@ class WindowsApplicationBuildType extends AbstractBuildType
     public function getDefaultConfig()
     {
         return [
+            'runtime' => true,
             'jre'    => true,
             'oneJar' => false,
         ];
+    }
+
+    public function getConfig()
+    {
+        $config = parent::getConfig();
+        $config['runtime'] = true;
+        $config['jre'] = true;
+
+        return $config;
     }
 
     /**
@@ -103,16 +113,24 @@ class WindowsApplicationBuildType extends AbstractBuildType
         }
     }
 
-    protected function copyJre($project, $cut = true)
+    protected function copyJavaRuntime($project, $cut = true)
     {
-        $jreHome = Ide::get()->getJrePath();
+        $javaRuntimeHome = Ide::get()->getJavaRuntimePath();
 
-        $newJreHome = $this->getBuildPath($project) . '/jre';
-        FileUtils::copyDirectory($jreHome, $newJreHome);
+        $newJavaRuntimeHome = $this->getBuildPath($project) . '/runtime';
+        FileUtils::copyDirectory($javaRuntimeHome, $newJavaRuntimeHome);
 
         if ($cut) {
-            fs::clean("$newJreHome/bin/server");
+            fs::clean("$newJavaRuntimeHome/bin/server");
         }
+    }
+
+    /**
+     * @deprecated Use copyJavaRuntime().
+     */
+    protected function copyJre($project, $cut = true)
+    {
+        $this->copyJavaRuntime($project, $cut);
     }
 
     /**
@@ -124,30 +142,35 @@ class WindowsApplicationBuildType extends AbstractBuildType
     {
         $config = $this->getConfig();
 
-        $jreHome = Ide::get()->getJrePath();
+        $javaRuntimeHome = Ide::get()->getJavaRuntimePath();
         $launch4j = Ide::get()->getLaunch4JProgram();
         $launch4jPath = Ide::get()->getLaunch4JPath();
 
-        if (!$launch4j || !$launch4jPath) {
-            UXDialog::showAndWait('Невозможно собрать исполняемый файл, не найдена утилита Launch4j', 'ERROR');
-
+        if (!$javaRuntimeHome) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не найден встроенный Java Runtime.', 'ERROR');
             return false;
         }
 
-        if ($jreHome && $config['jre']) {
-            $alert = new UXAlert('INFORMATION');
-            $alert->contentText = 'Копируем Java VM, это может занять некоторое время ...';
-            $alert->show();
-            $this->copyJre($project);
-            $alert->hide();
+        if (!$launch4j) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не найден Launch4j.', 'ERROR');
+            return false;
         }
+
+        if (!$launch4jPath) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не определён путь к Launch4j.', 'ERROR');
+            return false;
+        }
+
+        $alert = new UXAlert('INFORMATION');
+        $alert->contentText = 'Копируем Java VM, это может занять некоторое время ...';
+        $alert->show();
+        $this->copyJavaRuntime($project);
+        $alert->hide();
 
         $template = new Launch4jConfigTemplate();
         $template->setExeName($project->getName() . '.exe');
 
-        if ($jreHome && $config['jre']) {
-            $template->setJrePath('jre');
-        }
+        $template->setJavaRuntimePath('runtime');
 
         $icoFile = File::of($config['exeIcoPath']);
 
@@ -176,7 +199,8 @@ class WindowsApplicationBuildType extends AbstractBuildType
         $st->close();
 
         $process = new Process([
-            $launch4j, '-Djava.awt.headless=true', '-cp', "$launch4jPath/launch4j.jar" . File::PATH_SEPARATOR . "$launch4jPath/lib/*",
+            $launch4j, '-Djava.awt.headless=true', '-cp', "$launch4jPath/launch4j-purejava-patch.jar" . File::PATH_SEPARATOR
+                . "$launch4jPath/launch4j.jar" . File::PATH_SEPARATOR . "$launch4jPath/lib/*",
             'net.sf.launch4j.Main', $configPath
         ], $launch4jPath, Ide::get()->makeEnvironment());
 
@@ -217,23 +241,24 @@ class WindowsApplicationBuildType extends AbstractBuildType
         $dialog = new BuildProgressForm();
         $dialog->show();
 
-        $jreHome = Ide::get()->getJrePath();
+        $javaRuntimeHome = Ide::get()->getJavaRuntimePath();
         $launch4j = Ide::get()->getLaunch4JProgram();
         $launch4jPath = Ide::get()->getLaunch4JPath();
 
-        if (!$launch4j || !$launch4jPath) {
-            UXDialog::showAndWait('Невозможно собрать исполняемый файл, не найдена утилита Launch4j', 'ERROR');
-
+        if (!$javaRuntimeHome) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не найден встроенный Java Runtime.', 'ERROR');
             return false;
         }
 
-        /*if ($jreHome && $config['jre']) {
-            $alert = new UXAlert('INFORMATION');
-            $alert->contentText = 'Копируем Java VM, это может занять некоторое время ...';
-            $alert->show();
-            $this->copyJre($project);
-            $alert->hide();
-        }*/
+        if (!$launch4j) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не найден Launch4j.', 'ERROR');
+            return false;
+        }
+
+        if (!$launch4jPath) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не определён путь к Launch4j.', 'ERROR');
+            return false;
+        }
 
         $onExitProcess = function ($exitValue) use ($project, $dialog, $finished) {
             Logger::info("Finish executing: exitValue = $exitValue");
@@ -262,11 +287,7 @@ class WindowsApplicationBuildType extends AbstractBuildType
             if ($success) {
                 AntOneJarBuildType::makeAntBuildFile($project, $config);
 
-                $args = [Ide::get()->getApacheAntProgram(), $config['oneJar'] ? 'onejar' : 'jar', 'launch4j'];
-
-                if ($config['jre']) {
-                    $args[] = 'copy-jre';
-                }
+                $args = [Ide::get()->getApacheAntProgram(), $config['oneJar'] ? 'onejar' : 'jar', 'copy-runtime', 'launch4j'];
 
                 $process = new Process($args, $project->getRootDir(), Ide::get()->makeEnvironment());
 

@@ -35,7 +35,7 @@ class SetupWindowsApplicationBuildType extends AbstractBuildType
      */
     function getName()
     {
-        return 'Windows Инсталятор';
+        return 'Windows Installer';
     }
 
     /**
@@ -43,7 +43,7 @@ class SetupWindowsApplicationBuildType extends AbstractBuildType
      */
     function getDescription()
     {
-        return 'Установщик windows приложения все в одном файле (exe)';
+        return 'Установщик Windows приложения все в одном файле';
     }
 
     /**

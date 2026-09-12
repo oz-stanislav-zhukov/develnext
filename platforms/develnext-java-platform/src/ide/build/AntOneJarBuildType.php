@@ -50,7 +50,7 @@ class AntOneJarBuildType extends AbstractBuildType
      */
     function getName()
     {
-        return "JAR Приложение";
+        return "JAR Application";
     }
 
     /**
@@ -58,7 +58,7 @@ class AntOneJarBuildType extends AbstractBuildType
      */
     function getDescription()
     {
-        return 'Кроссплатформенное JAR приложение для Linux/Win/MacOS (требует Oracle JRE 1.8+)';
+        return 'Кроссплатформенное JAR приложение для Linux/Win/MacOS';
     }
 
     /**
@@ -94,7 +94,8 @@ class AntOneJarBuildType extends AbstractBuildType
 
         $content = FileUtils::get('res://ide/build/ant/buildDist.xml');
         $content = str::replace($content, '#NAME#', $project->getName());
-        $content = str::replace($content, '#JRE_DIR#', Ide::get()->getJrePath());
+        $content = str::replace($content, '#JAVA_RUNTIME_DIR#', Ide::get()->getJavaRuntimePath());
+        $content = str::replace($content, '#JRE_DIR#', Ide::get()->getJavaRuntimePath());
         $content = str::replace($content, '#BASE_DIR#', $project->getRootDir());
 
         $jarContent = '';
@@ -131,11 +132,8 @@ class AntOneJarBuildType extends AbstractBuildType
             $content = str::replace($content, '#L4J_DONT_WRAP_JAR#', 'true');
         }
 
-        if ($config['jre']) {
-            $content = str::replace($content, '#L4J_JRE_PATH#', 'jre');
-        } else {
-            $content = str::replace($content, '#L4J_JRE_PATH#', '');
-        }
+        $content = str::replace($content, '#L4J_RUNTIME_PATH#', 'runtime');
+        $content = str::replace($content, '#L4J_JRE_PATH#', 'runtime');
 
         if ($config['exeIcoPath']) {
             $icoFile = File::of(Ide::get()->getOpenedProject()->getRootDir() . "/" . $config['exeIcoPath']);
@@ -251,7 +249,7 @@ class AntOneJarBuildType extends AbstractBuildType
                     $dialog->setOpenDirectory($this->getBuildPath($project));
 
                     $pathToProgram = [
-                        Ide::get()->getJrePath() . "/bin/java",
+                        Ide::get()->getJavaRuntimePath() . "/bin/java",
                         '--module-path', "{$this->getBuildPath($project)}/lib/javafx",
                         '--add-modules', 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing',
                         '--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web',

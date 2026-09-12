@@ -19,7 +19,7 @@
     <cp>lib/*</cp>
   </classPath>
   <jre>
-    <path>#JRE_PATH#</path>
+    <path>#JAVA_RUNTIME_PATH#</path>
     <requiresJdk>false</requiresJdk>
     <requires64Bit>true</requires64Bit>
     <minVersion>25</minVersion>
