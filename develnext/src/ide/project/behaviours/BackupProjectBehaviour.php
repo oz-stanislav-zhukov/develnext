@@ -164,7 +164,7 @@ class BackupProjectBehaviour extends AbstractProjectBehaviour
             $this->timer->cancel();
         }
 
-        if ($this->config->isAutoCloseTrigger()) {
+        if ($this->config->isAutoCloseTrigger() && fs::isDir($this->project->getRootDir())) {
             $this->makeAutoBackup();
         }
     }
@@ -535,6 +535,10 @@ class BackupProjectBehaviour extends AbstractProjectBehaviour
     public function doBackup()
     {
         static $lastStamp = 0;
+
+        if (!fs::isDir($this->project->getRootDir())) {
+            return;
+        }
 
         if ($lastStamp == 0) {
             $lastStamp = Time::millis();

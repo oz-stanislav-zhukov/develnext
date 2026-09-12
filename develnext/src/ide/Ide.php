@@ -351,6 +351,11 @@ class Ide extends Application
         return Str::contains($this->OS, 'mac');
     }
 
+    public function getPlatform()
+    {
+        return $this->isWindows() ? 'win' : ($this->isMac() ? 'mac' : 'linux');
+    }
+
     /**
      * @return IdeLibrary
      */
@@ -590,6 +595,45 @@ class Ide extends Application
         }
 
         return $javaRuntimePath && $javaRuntimePath->exists() ? $javaRuntimePath->getCanonicalFile() : null;
+    }
+
+    /**
+     * Runtime source for a portable application package.
+     * Cross-platform runtimes are provisioned under tools/runtime/<platform>.
+     *
+     * @param string $platform win, linux or mac
+     * @return null|File
+     */
+    public function getPortableJavaRuntimePath($platform)
+    {
+        $runtime = new File($this->getToolPath(), "/runtime/$platform");
+
+        if (!$runtime->isDirectory()) {
+            $runtime = new File($this->getToolPath(), "/runtime-$platform");
+        }
+
+        if ($runtime->isDirectory()) {
+            return $runtime->getCanonicalFile();
+        }
+
+        return $platform === $this->getPlatform() ? $this->getJavaRuntimePath() : null;
+    }
+
+    /**
+     * Platform-specific OpenJFX modules for a portable application package.
+     *
+     * @param string $platform win, linux or mac
+     * @return null|File
+     */
+    public function getPortableJavaFxPath($platform)
+    {
+        $javafx = new File($this->getToolPath(), "/javafx/$platform");
+
+        if (!$javafx->isDirectory() && $platform === $this->getPlatform()) {
+            $javafx = $this->getOwnFile('lib/javafx');
+        }
+
+        return $javafx->isDirectory() ? $javafx->getCanonicalFile() : null;
     }
 
     /**
@@ -1609,7 +1653,10 @@ class Ide extends Application
         }
 
         if ($project) {
-            FileSystem::getSelectedEditor()->save();
+            if (fs::isDir($project->getRootDir()) && ($editor = FileSystem::getSelectedEditor())) {
+                $editor->save();
+            }
+
             ProjectSystem::close(false);
         }
 

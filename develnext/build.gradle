@@ -7,11 +7,32 @@ def java25Home = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(25)
 }.map { launcher -> launcher.metadata.installationPath.asFile }
 def javafxRuntime = rootProject.configurations.javafxRuntime
+def javafxRuntimeByPlatform = [
+        win: rootProject.configurations.javafxRuntimeWin,
+        linux: rootProject.configurations.javafxRuntimeLinux,
+        mac: rootProject.configurations.javafxRuntimeMac
+]
+def portableRuntimeSources = [
+        win: providers.gradleProperty('appRuntimeWin'),
+        linux: providers.gradleProperty('appRuntimeLinux'),
+        mac: providers.gradleProperty('appRuntimeMac')
+]
 def launch4jRuntime = rootProject.configurations.launch4jRuntime
 def launch4jWorkdir = rootProject.configurations.launch4jWorkdir
 def launch4jRuntimeDir = layout.buildDirectory.dir('generated/launch4j')
 def launch4jPatchClassesDir = layout.buildDirectory.dir('classes/launch4j-patch')
 def javafxModules = 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing'
+
+def copyPortableRuntimeSources = { destination ->
+    portableRuntimeSources.each { platform, source ->
+        if (source.present && file(source.get()).isDirectory()) {
+            copy {
+                from source.get()
+                into "$destination/$platform"
+            }
+        }
+    }
+}
 
 repositories {
     mavenCentral()
@@ -128,6 +149,12 @@ task prepareDist(dependsOn: ['installDist']) {
             into "$project.buildDir/install/$project.name/lib/javafx"
         }
 
+        javafxRuntimeByPlatform.each { platform, runtime ->
+            copy {
+                from runtime
+                into "$project.buildDir/install/$project.name/tools/javafx/$platform"
+            }
+        }
         fileTree("$project.buildDir/install/$project.name/lib").visit { FileVisitDetails el ->
             def name = el.getName()
             name = name.replaceAll(/(-[0-9]+|\.[0-9]+|-SNAPSHOT)/, "");
@@ -262,6 +289,8 @@ task distIdeWindows(dependsOn: ['distIde']) {
             from launch4jRuntimeDir
             into "$project.buildDir/install/$project.name/tools/Launch4j"
         }
+
+        copyPortableRuntimeSources("$project.buildDir/install/$project.name/tools/runtime")
     }
 }
 
@@ -273,7 +302,7 @@ task distIdeLinux(dependsOn: ['distIde']) {
         delete "$project.buildDir/install/$project.name/tools/Launch4jLinux"
 
         copy {
-            from "$project.rootDir/develnext-tools/jreLinux"
+            from java25Home
             into "$project.buildDir/install/$project.name/tools/runtime"
         }
 
@@ -281,6 +310,8 @@ task distIdeLinux(dependsOn: ['distIde']) {
             from "$project.rootDir/develnext-tools/Launch4jLinux"
             into "$project.buildDir/install/$project.name/tools/Launch4jLinux"
         }
+
+        copyPortableRuntimeSources("$project.buildDir/install/$project.name/tools/runtime")
     }
 }
 

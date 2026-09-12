@@ -5,6 +5,11 @@ def javafxVersion = '25.0.4'
 def javafxPlatform = providers.gradleProperty('javafxPlatform').getOrElse(
         OperatingSystem.current().isWindows() ? 'win' : 'linux'
 )
+def javafxPlatformClassifiers = [
+        win: providers.gradleProperty('javafxPlatformWin').getOrElse('win'),
+        linux: providers.gradleProperty('javafxPlatformLinux').getOrElse('linux'),
+        mac: providers.gradleProperty('javafxPlatformMac').getOrElse('mac')
+]
 def sourceRepositoryDir = file("$rootDir/.gradle/source-repo")
 
 System.setProperty('maven.repo.local', sourceRepositoryDir.absolutePath)
@@ -79,6 +84,9 @@ allprojects {
 
 configurations {
     javafxRuntime
+    javafxRuntimeWin
+    javafxRuntimeLinux
+    javafxRuntimeMac
     launch4jRuntime
     launch4jWorkdir
 }
@@ -92,6 +100,11 @@ dependencies {
     javafxRuntime("org.openjfx:javafx-web:${javafxVersion}:${javafxPlatform}") { transitive = false }
     javafxRuntime("org.openjfx:javafx-swing:${javafxVersion}:${javafxPlatform}") { transitive = false }
 
+    ['base', 'graphics', 'controls', 'fxml', 'media', 'web', 'swing'].each { module ->
+        javafxRuntimeWin("org.openjfx:javafx-${module}:${javafxVersion}:${javafxPlatformClassifiers.win}") { transitive = false }
+        javafxRuntimeLinux("org.openjfx:javafx-${module}:${javafxVersion}:${javafxPlatformClassifiers.linux}") { transitive = false }
+        javafxRuntimeMac("org.openjfx:javafx-${module}:${javafxVersion}:${javafxPlatformClassifiers.mac}") { transitive = false }
+    }
     launch4jRuntime('net.sf.launch4j:launch4j:3.50') {
         exclude group: 'com.thoughtworks.xstream', module: 'xstream'
     }

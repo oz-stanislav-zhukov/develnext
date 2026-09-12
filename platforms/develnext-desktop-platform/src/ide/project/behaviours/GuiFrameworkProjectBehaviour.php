@@ -51,6 +51,8 @@ use ide\project\ProjectIndexer;
 use ide\project\ProjectModule;
 use ide\project\ProjectTree;
 use ide\systems\FileSystem;
+use ide\systems\ProjectSystem;
+use ide\ui\Notifications;
 use ide\utils\FileUtils;
 use ide\utils\Json;
 use php\compress\ZipException;
@@ -212,6 +214,11 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
      * @var int
      */
     protected $ideStylesheetFileTime;
+
+    /**
+     * @var bool
+     */
+    protected $ideStylesheetSourceExists;
 
     /**
      * @var AccurateTimer
@@ -679,14 +686,29 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
 
     public function reloadStylesheetIfModified()
     {
-        if (!$this->ideStylesheetFileTime) {
-            $this->reloadStylesheet();
+        if (!fs::isDir($this->project->getRootDir())) {
+            if ($this->ideStylesheetTimer) {
+                $this->ideStylesheetTimer->stop();
+            }
+
+            $project = $this->project;
+
+            uiLater(function () use ($project) {
+                if (Ide::get()->getOpenedProject() == $project) {
+                    Logger::warn("Opened project directory was removed: {$project->getRootDir()}");
+                    ProjectSystem::closeWithWelcome(false);
+                    Notifications::warning('Проект закрыт', 'Папка открытого проекта была удалена или перемещена.');
+                }
+            });
+
             return;
         }
 
         $styleFile = $this->project->getSrcFile('.theme/style.fx.css');
+        $exists = fs::isFile($styleFile);
+        $fileTime = $exists ? fs::time($styleFile) : null;
 
-        if (!$styleFile->exists() || fs::time($styleFile) != $this->ideStylesheetFileTime) {
+        if ($exists !== $this->ideStylesheetSourceExists || $fileTime !== $this->ideStylesheetFileTime) {
             $this->reloadStylesheet();
         }
     }
@@ -758,7 +780,9 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
             $this->applyStylesheetToEditor($editor);
         }
 
-        $this->ideStylesheetFileTime = fs::time($this->project->getSrcFile('.theme/style.fx.css'));
+        $styleFile = $this->project->getSrcFile('.theme/style.fx.css');
+        $this->ideStylesheetSourceExists = fs::isFile($styleFile);
+        $this->ideStylesheetFileTime = $this->ideStylesheetSourceExists ? fs::time($styleFile) : null;
     }
 
     public function saveLauncherConfig()

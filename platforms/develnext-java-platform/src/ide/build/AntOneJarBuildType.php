@@ -13,6 +13,7 @@ use ide\project\ProjectFile;
 use ide\systems\ProjectSystem;
 use ide\utils\FileUtils;
 use php\compress\ZipFile;
+use php\gui\UXDialog;
 use php\io\File;
 use php\io\IOException;
 use php\io\Stream;
@@ -24,10 +25,16 @@ use php\util\Regex;
 
 class AntOneJarBuildType extends AbstractBuildType
 {
+    const JAVAFX_MODULES = 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing';
+    const NATIVE_ACCESS_MODULES = 'ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web';
+
     /**
      * @var string
      */
     private $mainClass;
+
+    /** @var string|null */
+    private $targetPlatform;
 
     /**
      * @return string
@@ -45,6 +52,11 @@ class AntOneJarBuildType extends AbstractBuildType
         $this->mainClass = $mainClass;
     }
 
+    public function setTargetPlatform($targetPlatform)
+    {
+        $this->targetPlatform = $targetPlatform;
+    }
+
     /**
      * @return string
      */
@@ -58,7 +70,22 @@ class AntOneJarBuildType extends AbstractBuildType
      */
     function getDescription()
     {
-        return 'Кроссплатформенное JAR приложение для Linux/Win/MacOS';
+        return 'Портативное Java-приложение со встроенным runtime';
+    }
+
+    public function getConfigForm()
+    {
+        return 'blocks/_PortableApplicationConfig.fxml';
+    }
+
+    public function getDefaultConfig()
+    {
+        $platformNames = ['win' => 'Windows', 'linux' => 'Linux', 'mac' => 'macOS'];
+
+        return [
+            'platform' => $platformNames[Ide::get()->getPlatform()],
+            'portableFolder' => true,
+        ];
     }
 
     /**
@@ -82,20 +109,56 @@ class AntOneJarBuildType extends AbstractBuildType
     public function getConfig()
     {
         $config = parent::getConfig();
+
+        foreach ($this->getDefaultConfig() as $name => $value) {
+            if (!isset($config[$name])) {
+                $config[$name] = $value;
+            }
+        }
+
+        if ($this->targetPlatform) {
+            $platformNames = ['win' => 'Windows', 'linux' => 'Linux', 'mac' => 'macOS'];
+            $config['platform'] = $platformNames[$this->targetPlatform];
+        }
+
         $config['mainClass'] = $this->getMainClass();
 
         return $config;
     }
 
+    public static function getTargetPlatform(array $config)
+    {
+        $platform = isset($config['platform']) ? str::lower($config['platform']) : null;
+
+        if ($platform === 'windows' || $platform === 'win') return 'win';
+        if ($platform === 'macos' || $platform === 'mac') return 'mac';
+        if ($platform === 'linux') return 'linux';
+
+        // Compatibility with settings written by pre-unified builds.
+        if (!empty($config['windows'])) return 'win';
+        if (!empty($config['mac'])) return 'mac';
+        if (!empty($config['linux'])) return 'linux';
+
+        return Ide::get()->getPlatform();
+    }
+
     public static function makeAntBuildFile(Project $project, array $config)
     {
+        $platform = static::getTargetPlatform($config);
+        $javaRuntimePath = isset($config['javaRuntimePath'])
+            ? $config['javaRuntimePath']
+            : Ide::get()->getPortableJavaRuntimePath($platform);
+        $javafxRuntimePath = isset($config['javafxRuntimePath'])
+            ? $config['javafxRuntimePath']
+            : Ide::get()->getPortableJavaFxPath($platform);
+
         $project->copyModuleFiles($project->getRootDir() . "/build/dist/lib");
-        FileUtils::copyDirectory(Ide::getOwnFile('lib/javafx'), $project->getRootDir() . '/build/dist/lib/javafx');
+        FileUtils::copyDirectory($javafxRuntimePath, $project->getRootDir() . '/build/dist/lib/javafx');
 
         $content = FileUtils::get('res://ide/build/ant/buildDist.xml');
         $content = str::replace($content, '#NAME#', $project->getName());
-        $content = str::replace($content, '#JAVA_RUNTIME_DIR#', Ide::get()->getJavaRuntimePath());
-        $content = str::replace($content, '#JRE_DIR#', Ide::get()->getJavaRuntimePath());
+        $content = str::replace($content, '#JAVA_RUNTIME_DIR#', $javaRuntimePath);
+        $content = str::replace($content, '#JRE_DIR#', $javaRuntimePath);
         $content = str::replace($content, '#BASE_DIR#', $project->getRootDir());
 
         $jarContent = '';
@@ -124,18 +187,27 @@ class AntOneJarBuildType extends AbstractBuildType
 
         $content = str::replace($content, '#MAIN_CLASS#', $config['mainClass']);
 
-        if ($config['oneJar']) {
+        if (!empty($config['portableJar']) && $platform === 'win') {
+            $content = str::replace($content, '#L4J_JAR_FILE#', '');
+            $content = str::replace($content, '#L4J_DONT_WRAP_JAR#', 'true');
+            $content = str::replace($content, '#L4J_CLASS_PATH#', $project->getName() . '.jar');
+            $content = str::replace($content, '#L4J_DELETE_JAR#', '');
+        } elseif ($config['oneJar']) {
             $content = str::replace($content, '#L4J_JAR_FILE#', '${dist}/' . $project->getName() . '.jar');
             $content = str::replace($content, '#L4J_DONT_WRAP_JAR#', 'false');
+            $content = str::replace($content, '#L4J_CLASS_PATH#', 'lib/*');
+            $content = str::replace($content, '#L4J_DELETE_JAR#', '<delete file="${dist}/' . $project->getName() . '.jar" failonerror="false" />');
         } else {
             $content = str::replace($content, '#L4J_JAR_FILE#', '');
             $content = str::replace($content, '#L4J_DONT_WRAP_JAR#', 'true');
+            $content = str::replace($content, '#L4J_CLASS_PATH#', 'lib/*');
+            $content = str::replace($content, '#L4J_DELETE_JAR#', '');
         }
 
         $content = str::replace($content, '#L4J_RUNTIME_PATH#', 'runtime');
         $content = str::replace($content, '#L4J_JRE_PATH#', 'runtime');
 
-        if ($config['exeIcoPath']) {
+        if (!empty($config['exeIcoPath'])) {
             $icoFile = File::of(Ide::get()->getOpenedProject()->getRootDir() . "/" . $config['exeIcoPath']);
 
             if (!$icoFile->isFile()) {
@@ -157,7 +229,7 @@ class AntOneJarBuildType extends AbstractBuildType
             $content = str::replace($content, 'icon="#L4J_ICON_FILE#"', '');
         }
 
-        if (!$config['l4j']) {
+        if (empty($config['l4j'])) {
             $content = Regex::of('\\<launch4j\\>.*\\<\\/launch4j\\>', 's')->with($content)->replaceGroup(0, '');
         }
 
@@ -220,6 +292,115 @@ class AntOneJarBuildType extends AbstractBuildType
         }
     }
 
+    protected static function movePortablePath($source, $destination)
+    {
+        $source = File::of($source);
+        $destination = File::of($destination);
+        $destination->getParentFile()->mkdirs();
+
+        if (!$source->renameTo($destination)) {
+            if ($source->isDirectory()) {
+                FileUtils::copyDirectory($source, $destination);
+                FileUtils::deleteDirectory($source);
+            } else {
+                FileUtils::copyFile($source, $destination);
+                $source->delete();
+            }
+        }
+    }
+
+    public static function finalizePortableLayout(Project $project, array $config)
+    {
+        $platform = static::getTargetPlatform($config);
+        $name = $project->getName();
+        $dist = $project->getRootDir() . '/build/dist';
+        $modules = static::JAVAFX_MODULES;
+        $nativeAccess = static::NATIVE_ACCESS_MODULES;
+
+        if ($platform === 'win') {
+            $script = "@echo off\r\nsetlocal\r\nset \"APP_HOME=%~dp0\"\r\n"
+                . "\"%APP_HOME%runtime\\bin\\javaw.exe\" --module-path \"%APP_HOME%lib\\javafx\" "
+                . "--add-modules $modules --enable-native-access=$nativeAccess -jar \"%APP_HOME%$name.jar\" %*\r\n";
+            FileUtils::put("$dist/run.bat", $script);
+
+            return;
+        }
+
+        if ($platform === 'linux') {
+            $launcher = str::join([
+                '#!/usr/bin/env sh',
+                'set -eu',
+                'APP_HOME="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"',
+                'exec "$APP_HOME/runtime/bin/java" --module-path "$APP_HOME/lib/javafx" \\',
+                "  --add-modules $modules \\",
+                "  --enable-native-access=$nativeAccess \\",
+                "  -jar \"\$APP_HOME/$name.jar\" \"\$@\"",
+                '',
+            ], "\n");
+            $launcherFile = File::of("$dist/$name");
+            FileUtils::put($launcherFile, $launcher);
+            $launcherFile->setExecutable(true, false);
+
+            $desktop = str::join([
+                '[Desktop Entry]',
+                'Type=Application',
+                "Name=$name",
+                "Exec=sh -c 'cd \"\$(dirname \"\$1\")\" && exec \"./$name\"' sh %k",
+                'Icon=application-x-executable',
+                'Terminal=false',
+                'Categories=Development;',
+                '',
+            ], "\n");
+            FileUtils::put("$dist/$name.desktop", $desktop);
+
+            return;
+        }
+
+        $contents = "$dist/$name.app/Contents";
+        static::movePortablePath("$dist/$name.jar", "$contents/app/$name.jar");
+        static::movePortablePath("$dist/lib", "$contents/lib");
+        static::movePortablePath("$dist/runtime", "$contents/runtime");
+        File::of("$contents/Resources")->mkdirs();
+        File::of("$contents/MacOS")->mkdirs();
+        FileUtils::put("$contents/Resources/icon.icns", Stream::getContents('res://.data/img/DevelNextIco.icns'));
+
+        $launcher = str::join([
+            '#!/bin/sh',
+            'set -eu',
+            'CONTENTS="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"',
+            'exec "$CONTENTS/runtime/bin/java" --module-path "$CONTENTS/lib/javafx" \\',
+            "  --add-modules $modules \\",
+            "  --enable-native-access=$nativeAccess \\",
+            "  -jar \"\$CONTENTS/app/$name.jar\" \"\$@\"",
+            '',
+        ], "\n");
+        $launcherFile = File::of("$contents/MacOS/$name");
+        FileUtils::put($launcherFile, $launcher);
+        $launcherFile->setExecutable(true, false);
+
+        $bundleName = str::replace(str::replace($name, '&', '&amp;'), '<', '&lt;');
+        $bundleId = Regex::of('[^a-z0-9.-]+')->with(str::lower($name))->replaceGroup(0, '-');
+        $plist = str::join([
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+            '<plist version="1.0">',
+            '<dict>',
+            '  <key>CFBundleName</key>', "  <string>$bundleName</string>",
+            '  <key>CFBundleDisplayName</key>', "  <string>$bundleName</string>",
+            '  <key>CFBundleExecutable</key>', "  <string>$bundleName</string>",
+            '  <key>CFBundleIdentifier</key>', "  <string>org.develnext.app.$bundleId</string>",
+            '  <key>CFBundleVersion</key>', '  <string>1.0</string>',
+            '  <key>CFBundleShortVersionString</key>', '  <string>1.0</string>',
+            '  <key>CFBundleIconFile</key>', '  <string>icon.icns</string>',
+            '  <key>LSMinimumSystemVersion</key>', '  <string>12.0</string>',
+            '  <key>NSHighResolutionCapable</key>', '  <true/>',
+            '</dict>',
+            '</plist>',
+            '',
+        ], "\n");
+        FileUtils::put("$contents/Info.plist", $plist);
+    }
+
     /**
      * @param Project $project
      *
@@ -229,14 +410,39 @@ class AntOneJarBuildType extends AbstractBuildType
      */
     function onExecute(Project $project, $finished = true)
     {
+        $config = $this->getConfig();
+        $platform = static::getTargetPlatform($config);
+        $config['oneJar'] = true;
+        $config['portableJar'] = true;
+        $config['l4j'] = $platform === 'win';
+        $config['javaRuntimePath'] = Ide::get()->getPortableJavaRuntimePath($platform);
+        $config['javafxRuntimePath'] = Ide::get()->getPortableJavaFxPath($platform);
+
+        if (!$config['javaRuntimePath']) {
+            UXDialog::showAndWait("Невозможно собрать приложение: runtime JDK 25 для платформы '$platform' не найден в tools/runtime/$platform.", 'ERROR');
+            return false;
+        }
+
+        if (!$config['javafxRuntimePath']) {
+            UXDialog::showAndWait("Невозможно собрать приложение: JavaFX для платформы '$platform' не найден в tools/javafx/$platform.", 'ERROR');
+            return false;
+        }
+
+        if ($platform === 'win' && (!Ide::get()->getLaunch4JProgram() || !Ide::get()->getLaunch4JPath())) {
+            UXDialog::showAndWait('Невозможно собрать приложение: не найден Launch4j.', 'ERROR');
+            return false;
+        }
+
         FileUtils::deleteDirectory($this->getBuildPath($project));
         $dialog = new BuildProgressForm();
         $dialog->show();
 
-        $onExitProcess = function ($exitValue) use ($project, $dialog, $finished) {
+        $onExitProcess = function ($exitValue) use ($project, $dialog, $finished, $config, $platform) {
             Logger::info("Finish executing: exitValue = $exitValue");
 
             if ($exitValue == 0) {
+                AntOneJarBuildType::finalizePortableLayout($project, $config);
+
                 if ($finished) {
                     if (is_callable($finished)) {
                         $finished();
@@ -248,13 +454,13 @@ class AntOneJarBuildType extends AbstractBuildType
                     $dialog->setBuildPath($this->getBuildPath($project));
                     $dialog->setOpenDirectory($this->getBuildPath($project));
 
-                    $pathToProgram = [
-                        Ide::get()->getJavaRuntimePath() . "/bin/java",
-                        '--module-path', "{$this->getBuildPath($project)}/lib/javafx",
-                        '--add-modules', 'javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web,javafx.swing',
-                        '--enable-native-access=ALL-UNNAMED,javafx.graphics,javafx.media,javafx.web',
-                        '-jar', "{$this->getBuildPath($project)}/{$project->getName()}.jar"
-                    ];
+                    if ($platform === 'win') {
+                        $pathToProgram = "{$this->getBuildPath($project)}/{$project->getName()}.exe";
+                    } elseif ($platform === 'linux') {
+                        $pathToProgram = "{$this->getBuildPath($project)}/{$project->getName()}";
+                    } else {
+                        $pathToProgram = "{$this->getBuildPath($project)}/{$project->getName()}.app/Contents/MacOS/{$project->getName()}";
+                    }
 
                     $dialog->setRunProgram($pathToProgram);
 
@@ -265,11 +471,19 @@ class AntOneJarBuildType extends AbstractBuildType
         $dialog->setOnExitProcess($onExitProcess);
 
         ProjectSystem::saveOnlyRequired();
-        ProjectSystem::compileAll(Project::ENV_PROD, $dialog, 'ant onejar', function ($success) use ($project, $dialog) {
-            if ($success) {
-                $this->makeAntBuildFile($project, $this->getConfig());
+        $targets = [$platform === 'win' ? 'distAppWindows' : ($platform === 'mac' ? 'distAppMac' : 'distAppLinux')];
 
-                $process = new Process([Ide::get()->getApacheAntProgram(), 'onejar'], $project->getRootDir(), Ide::get()->makeEnvironment());
+        ProjectSystem::compileAll(Project::ENV_PROD, $dialog, 'ant ' . str::join($targets, ' '), function ($success) use ($project, $dialog, $config, $targets) {
+            if ($success) {
+                $this->makeAntBuildFile($project, $config);
+
+                $args = [Ide::get()->getApacheAntProgram()];
+
+                foreach ($targets as $target) {
+                    $args[] = $target;
+                }
+
+                $process = new Process($args, $project->getRootDir(), Ide::get()->makeEnvironment());
 
                 $process = $process->start();
 

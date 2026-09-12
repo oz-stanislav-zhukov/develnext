@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="145.0" minWidth="445.0" prefHeight="145.0" prefWidth="465.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <Label layoutX="14.0" layoutY="14.0" text="Целевая платформа" style="-fx-font-weight: bold;" />
+      <ComboBox id="o_platform" layoutX="14.0" layoutY="39.0" prefWidth="190.0" value="Windows">
+         <items>
+            <FXCollections fx:factory="observableArrayList">
+               <String fx:value="Windows" />
+               <String fx:value="Linux" />
+               <String fx:value="macOS" />
+            </FXCollections>
+         </items>
+      </ComboBox>
+      <Separator layoutX="14.0" layoutY="72.0" prefWidth="437.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
+      <CheckBox id="o_portableFolder" disable="true" layoutX="14.0" layoutY="91.0" mnemonicParsing="false" selected="true" text="Portable folder (JAR + JavaFX + runtime)" />
+      <Label layoutX="14.0" layoutY="118.0" text="Системная Java и JAVA_HOME не требуются." style="-fx-text-fill: gray;" />
+   </children>
+</AnchorPane>

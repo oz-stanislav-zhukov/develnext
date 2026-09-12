@@ -396,20 +396,23 @@ class ProjectSystem
     static function close($saveAll = true)
     {
         $project = Ide::get()->getOpenedProject();
+        $projectAvailable = !$project || fs::isDir($project->getRootDir());
 
-        ProjectSystem::saveOnlyRequired();
+        if ($projectAvailable) {
+            ProjectSystem::saveOnlyRequired();
+        }
 
         if ($project) {
             Ide::get()->trigger('closeProject', [$project]);
         }
 
         if ($project) {
-            $project->close(true);
+            $project->close($projectAvailable);
         }
 
         foreach (FileSystem::getOpened() as $hash => $info) {
             //if ($project && $project->isContainsFile($info['file'])) {
-            FileSystem::close($info['file'], $saveAll);
+            FileSystem::close($info['file'], $saveAll && $projectAvailable);
             //}
         }
 
