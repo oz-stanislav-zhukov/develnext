@@ -335,7 +335,7 @@ class AntOneJarBuildType extends AbstractBuildType
                 'exec "$APP_HOME/runtime/bin/java" --module-path "$APP_HOME/lib/javafx" \\',
                 "  --add-modules $modules \\",
                 "  --enable-native-access=$nativeAccess \\",
-                '  "@$APP_HOME/javafx-compatibility.args" \',
+                "  \"@\$APP_HOME/javafx-compatibility.args\" \\",
                 "  -jar \"\$APP_HOME/$name.jar\" \"\$@\"",
                 '',
             ], "\n");
@@ -374,7 +374,7 @@ class AntOneJarBuildType extends AbstractBuildType
             'exec "$CONTENTS/runtime/bin/java" --module-path "$CONTENTS/lib/javafx" \\',
             "  --add-modules $modules \\",
             "  --enable-native-access=$nativeAccess \\",
-            '  "@$CONTENTS/javafx-compatibility.args" \',
+            "  \"@\$CONTENTS/javafx-compatibility.args\" \\",
             "  -jar \"\$CONTENTS/app/$name.jar\" \"\$@\"",
             '',
         ], "\n");

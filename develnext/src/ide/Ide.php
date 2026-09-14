@@ -298,7 +298,7 @@ class Ide extends Application
                             if (!fs::exists($info['file']) /*&& !FileUtils::equalNames($file, $info['file'])*/) {
                                 uiLater(function () use ($info) {
                                     $editor = FileSystem::getOpenedEditor($info['file']);
-                                    if ($editor->isAutoClose()) {
+                                    if ($editor !== null && $editor->isAutoClose()) {
                                         $editor->delete();
                                     }
                                 });
